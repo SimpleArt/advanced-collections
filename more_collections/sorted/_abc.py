@@ -88,6 +88,8 @@ class SupportsRichComparison(Protocol):
         ...
 
 
+Self = TypeVar("Self")
+
 T = TypeVar("T")
 S = TypeVar("S")
 T1 = TypeVar("T1")
@@ -209,6 +211,16 @@ class SortedSequence(Sequence[T], SortedConstructor[T], ABC, Generic[T]):
 
     __slots__ = ()
 
+    def __contains__(self: SortedSequence[Any], value: Any, /) -> bool:
+        i = bisect_left(self, value)
+        return 0 <= i < len(self) and not (value is not self[i] != value)
+
+    def __copy__(self: Self, /) -> Self:
+        return type(self).from_sorted(self)
+
+    def __deepcopy__(self: Self, /) -> Self:
+        return type(self).from_sorted(deepcopy(x) for x in self)
+
     @overload
     def __getitem__(self: SortedSequence[T], index: int, /) -> T:
         ...
@@ -232,6 +244,9 @@ class SortedSequence(Sequence[T], SortedConstructor[T], ABC, Generic[T]):
     @abstractmethod
     def __reversed__(self: SortedSequence[T], /) -> Iterator[T]:
         raise NotImplementedError("__reversed__ is a required method for sorted sequences")
+
+    def copy(self: Self, /) -> Self:
+        return copy(self)
 
     def count(self: SortedSequence[Any], value: Any, /) -> int:
         hi = bisect_right(self, value)
@@ -265,6 +280,16 @@ class SortedKeySequence(Sequence[T], SortedKeyConstructor[T], ABC, Generic[T]):
 
     __slots__ = ()
 
+    def __contains__(self: SortedSequence[Any], value: Any, /) -> bool:
+        i = bisect_left(self, value, key=self.key)
+        return 0 <= i < len(self) and not (value is not self[i] != value)
+
+    def __copy__(self: Self, /) -> Self:
+        return type(self).from_sorted(self, self.key)
+
+    def __deepcopy__(self: Self, /) -> Self:
+        return type(self).from_sorted((deepcopy(x) for x in self), self.key)
+
     @overload
     def __getitem__(self: SortedKeySequence[T], index: int, /) -> T:
         ...
@@ -288,6 +313,9 @@ class SortedKeySequence(Sequence[T], SortedKeyConstructor[T], ABC, Generic[T]):
     @abstractmethod
     def __reversed__(self: SortedKeySequence[T], /) -> Iterator[T]:
         raise NotImplementedError("__reversed__ is a required method for sorted key sequences")
+
+    def copy(self: Self, /) -> Self:
+        return copy(self)
 
     def count(self: SortedKeySequence[Any], value: Any, /) -> int:
         hi = bisect_right(self, value, key=self.key)
@@ -470,12 +498,6 @@ class SortedSet(typing.Set[T], AbstractSet[T], SortedSequence[T], ABC, Generic[T
     def __contains__(self: SortedSet[Any], element: Any, /) -> bool:
         return element in self._set
 
-    def __copy__(self: SortedSet[T], /) -> SortedSet[T]:
-        return type(self).from_sorted(self)
-
-    def __deepcopy__(self: SortedSet[T], /) -> SortedSet[T]:
-        return type(self).from_sorted(deepcopy(x) for x in self)
-
     def __eq__(self: SortedSet[Any], other: Any, /) -> bool:
         if isinstance(other, AbstractSet):
             return self._set == other
@@ -568,9 +590,6 @@ class SortedSet(typing.Set[T], AbstractSet[T], SortedSequence[T], ABC, Generic[T
             return NotImplemented
 
     __rxor__ = __xor__
-
-    def copy(self: SortedSet[T], /) -> SortedSet[T]:
-        return copy(self)
 
     def count(self: SortedSet[Any], value: Any, /) -> Literal[0, 1]:
         return 1 if value in self else 0
@@ -693,12 +712,6 @@ class SortedKeySet(typing.Set[T], AbstractSet[T], SortedKeySequence[T], ABC, Gen
     def __contains__(self: SortedKeySet[Any], value: Any, /) -> bool:
         return value in self._set
 
-    def __copy__(self: SortedKeySet[T], /) -> SortedKeySet[T]:
-        return type(self).from_sorted(self, self.key)
-
-    def __deepcopy__(self: SortedKeySet[T], /) -> SortedKeySet[T]:
-        return type(self).from_sorted((deepcopy(x) for x in self), self.key)
-
     def __eq__(self: SortedKeySet[Any], other: Any, /) -> bool:
         if isinstance(other, AbstractSet):
             return self._set == other
@@ -791,9 +804,6 @@ class SortedKeySet(typing.Set[T], AbstractSet[T], SortedKeySequence[T], ABC, Gen
             return NotImplemented
 
     __rxor__ = __xor__
-
-    def copy(self: SortedKeySet[T], /) -> SortedKeySet[T]:
-        return copy(self)
 
     def count(self: SortedKeySet[Any], value: Any, /) -> Literal[0, 1]:
         return 1 if value in self else 0
@@ -919,12 +929,6 @@ class SortedMutableSet(SortedSet[T_co], MutableSet[T_co], ABC, Generic[T_co]):
             return self.intersection(other)
         else:
             return NotImplemented
-
-    def __copy__(self: SortedMutableSet[T_co], /) -> SortedMutableSet[T_co]:
-        return cast(SortedMutableSet[T_co], super().__copy__())
-
-    def __deepcopy__(self: SortedMutableSet[T_co], /) -> SortedMutableSet[T_co]:
-        return cast(SortedMutableSet[T_co], super().__deepcopy__())
 
     @overload
     def __getitem__(self: SortedMutableSet[T_co], index: int, /) -> T_co:
