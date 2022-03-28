@@ -260,13 +260,10 @@ class SortedSequence(Sequence[T], SortedConstructor[T], ABC, Generic[T]):
         else:
             raise TypeError(f"from_iterable expects an iterable, got {iterable!r}")
 
+    @abstractmethod
     @classmethod
     def from_sorted(cls: Type[SortedSequence[T]], iterable: Iterable[T], /) -> SortedSequence[T]:
-        if isinstance(iterable, Iterable):
-            import more_collections.sorted as mcs
-            return mcs.SortedList(iterable)
-        else:
-            raise TypeError(f"from_sorted expects an iterable, got {iterable!r}")
+        raise NotImplementedError(f"from_sorted is a required method for sorted sequences")
 
     def index(self: SortedSequence[Any], value: Any, start: int = 0, stop: Optional[int] = None, /) -> int:
         i = bisect_left(self, value, start, stop)
@@ -327,19 +324,14 @@ class SortedKeySequence(Sequence[T], SortedKeyConstructor[T], ABC, Generic[T]):
         if not isinstance(iterable, Iterable):
             raise TypeError(f"from_iterable expects an iterable, got {iterable!r}")
         elif not callable(key):
-            raise TypeError(f"key expects a callable, got {key!r}")
+            raise TypeError(f"from_iterable expects a callable key, got {key!r}")
         else:
             return cls.from_sorted(sorted(iterable, key=key), key)
 
+    @abstractmethod
     @classmethod
     def from_sorted(cls: Type[SortedKeySequence[T]], iterable: Iterable[T], /, key: Callable[[T], Any]) -> SortedKeySequence[T]:
-        if not isinstance(iterable, Iterable):
-            raise TypeError(f"from_sorted expects an iterable, got {iterable!r}")
-        elif not callable(key):
-            raise TypeError(f"key expects a callable, got {key!r}")
-        else:
-            import more_collections.sorted as mcs
-            return mcs.SortedKeyList.from_sorted(iterable, key)
+        raise NotImplementedError(f"from_sorted is a required method for sorted key sequences")
 
     def index(self: SortedKeySequence[Any], value: Any, start: int = 0, stop: Optional[int] = None, /) -> int:
         i = bisect_left(self, value, start, stop, key=self.key)
@@ -459,19 +451,14 @@ class SortedKeyMutableSequence(MutableSequence[T], SortedKeySequence[T], ABC, Ge
         if not isinstance(iterable, Iterable):
             raise TypeError(f"from_iterable expects an iterable, got {iterable!r}")
         elif not callable(key):
-            raise TypeError(f"key expects a callable, got {key!r}")
+            raise TypeError(f"from_iterable expects a callable key, got {key!r}")
         else:
             return cls.from_sorted(sorted(iterable, key=key), key)
 
+    @abstractmethod
     @classmethod
     def from_sorted(cls: Type[SortedKeyMutableSequence[T]], iterable: Iterable[T], /, key: Callable[[T], Any]) -> SortedKeyMutableSequence[T]:
-        if not isinstance(iterable, Iterable):
-            raise TypeError(f"from_sorted expects an iterable, got {iterable!r}")
-        elif not callable(key):
-            raise TypeError(f"key expects a callable, got {key!r}")
-        else:
-            import more_collections.sorted as mcs
-            return mcs.SortedKeyList.from_sorted(iterable, key)
+        raise NotImplementedError("from_sorted is a required method for sorted key mutable sequences")
 
     def insert(self: SortedKeyMutableSequence[T], index: int, value: T, /) -> None:
         raise NotImplementedError("insert is not usable for sorted key mutable sequences, use append instead")
@@ -615,13 +602,10 @@ class SortedSet(typing.Set[T], AbstractSet[T], SortedSequence[T], ABC, Generic[T
         else:
             raise TypeError(f"from_iterable expects an iterable, got {iterable!r}")
 
+    @abstractmethod
     @classmethod
     def from_sorted(cls: Type[SortedSet[T]], iterable: Iterable[T], /) -> SortedSet[T]:
-        if isinstance(iterable, Iterable):
-            import more_collections.sorted as mcs
-            return mcs.SortedSet(iterable)
-        else:
-            raise TypeError(f"from_sorted expects an iterable, got {iterable!r}")
+        raise NotImplementedError("from_sorted is a required method for sorted sets")
 
     def index(self: SortedSet[Any], value: Any, start: int = 0, stop: Optional[int] = None, /) -> int:
         return self._sequence.index(value, start, stop)
@@ -827,19 +811,14 @@ class SortedKeySet(typing.Set[T], AbstractSet[T], SortedKeySequence[T], ABC, Gen
         if not isinstance(iterable, Iterable):
             raise TypeError(f"from_iterable expects an iterable, got {iterable!r}")
         elif not callable(key):
-            raise TypeError(f"key expects a callable, got {key!r}")
+            raise TypeError(f"from_iterable expects a callable key, got {key!r}")
         else:
             return cls.from_sorted(sorted(set(iterable), key=key), key)
 
+    @abstractmethod
     @classmethod
     def from_sorted(cls: Type[SortedKeySet[T]], iterable: Iterable[T], /, key: Callable[[T], Any]) -> SortedKeySet[T]:
-        if not isinstance(iterable, Iterable):
-            raise TypeError(f"from_sorted expects an iterable, got {iterable!r}")
-        elif not callable(key):
-            raise TypeError(f"key expects a callable, got {key!r}")
-        else:
-            import more_collections.sorted as mcs
-            return mcs.SortedKeySet.from_sorted(iterable, key=key)
+        raise NotImplementedError("from_sorted is a required method for sorted key sets")
 
     def index(self: SortedKeySet[Any], value: Any, start: int = 0, stop: Optional[int] = None, /) -> int:
         return self._sequence.index(value, start, stop)
@@ -1046,13 +1025,10 @@ class SortedMutableSet(SortedSet[T_co], MutableSet[T_co], ABC, Generic[T_co]):
         else:
             raise TypeError(f"from_iterable expects an iterable, got {iterable!r}")
 
+    @abstractmethod
     @classmethod
-    def from_sorted(cls: Type[SortedMutableSet[T_co]], iterable: Iterable[T_co], /) -> SortedMutableSet[T_co]:
-        if isinstance(iterable, Iterable):
-            import more_collections.sorted as mcs
-            return mcs.SortedSet(iterable)
-        else:
-            raise TypeError(f"from_sorted expects an iterable, got {iterable!r}")
+    def from_sorted(cls: Type[SortedMutableSet[T]], iterable: Iterable[T], /) -> SortedMutableSet[T]:
+        raise NotImplementedError("from_sorted is a required method for sorted mutable sets")
 
     def intersection(self: SortedMutableSet[T_co], /, *iterables: Iterable[Any]) -> SortedMutableSet[T_co]:
         return cast(SortedMutableSet[T_co], super().intersection(*iterables))
