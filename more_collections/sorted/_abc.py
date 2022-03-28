@@ -119,7 +119,7 @@ class SortedIterator(Iterator[T], SortedIterable[T], ABC, Generic[T]):
 
     __slots__ = ()
 
-    def __iter__(self: SortedIterator[T], /) -> SortedIterator[T]:
+    def __iter__(self: Self, /) -> Self:
         return self
 
     @abstractmethod
@@ -140,7 +140,7 @@ class SortedKeyIterator(Iterator[T], SortedKeyIterable[T], ABC, Generic[T]):
 
     __slots__ = ()
 
-    def __iter__(self: SortedKeyIterator[T], /) -> SortedKeyIterator[T]:
+    def __iter__(self: Self, /) -> Self:
         return self
 
     @abstractmethod
