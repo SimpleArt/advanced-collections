@@ -998,9 +998,6 @@ class SortedMutableSet(SortedSet[T_co], MutableSet[T_co], ABC, Generic[T_co]):
         self._sequence.clear()
         self._set.clear()
 
-    def copy(self: SortedMutableSet[T_co], /) -> SortedMutableSet[T_co]:
-        return cast(SortedMutableSet[T_co], super().copy())
-
     def difference(self: SortedMutableSet[T_co], /, *iterables: Iterable[Any]) -> SortedMutableSet[T_co]:
         return cast(SortedMutableSet[T_co], super().difference(*iterables))
 
@@ -1632,6 +1629,12 @@ class SortedMapping(Mapping[KT_co, VT_co], SortedIterable[KT_co], Generic[KT_co,
 
     __slots__ = ()
 
+    def __copy__(self: Self, /) -> Self:
+        return type(self).from_sorted(self)
+
+    def __deepcopy__(self: Self, /) -> Self:
+        return type(self).from_sorted((deepcopy(key), deepcopy(value)) for key, value in self.items())
+
     def __getitem__(self: SortedMapping[KT, VT_co], key: KT, /) -> VT_co:
         return self._mapping[key]
 
@@ -1654,6 +1657,9 @@ class SortedMapping(Mapping[KT_co, VT_co], SortedIterable[KT_co], Generic[KT_co,
 
     def __reversed__(self: SortedMapping[KT_co, Any], /) -> Iterator[KT_co]:
         return reversed(self._set)
+
+    def copy(self: Self, /) -> Self:
+        return copy(self)
 
     @classmethod
     def from_iterable(cls: Type[SortedMapping[KT_co, VT_co]], mapping: Union[Mapping[KT_co, VT_co], Iterable[Tuple[KT_co, VT_co]]], /) -> SortedMapping[KT_co, VT_co]:
