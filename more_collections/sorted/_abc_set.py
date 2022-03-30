@@ -223,6 +223,9 @@ class SortedSet(AbstractSet[T], SortedSequence[T], ABC, Generic[T]):
 
     @classmethod
     def from_iterable(cls: Type[SortedSet[T]], iterable: Iterable[T], /) -> SortedSet[T]:
+        """
+        Return SortedSet implementation of other iterable.
+        """
         if isinstance(iterable, Iterable):
             return cls.from_sorted(sorted({*iterable}))  # type: ignore
         else:
@@ -231,6 +234,10 @@ class SortedSet(AbstractSet[T], SortedSequence[T], ABC, Generic[T]):
     @abstractmethod
     @classmethod
     def from_sorted(cls: Type[SortedSet[T]], iterable: Iterable[T], /) -> SortedSet[T]:
+        """
+        Return SortedSet implementation of other iterable.
+        from_sorted should assume other iterable is already sorted.
+        """
         raise NotImplementedError("from_sorted is a required method for sorted sets")
 
     def index(self: SortedSet[Any], value: Any, /, start: int = 0, stop: Optional[int] = None, *, mode: Literal["exact", "left", "right"] = "exact") -> int:
@@ -328,11 +335,17 @@ class SortedSet(AbstractSet[T], SortedSequence[T], ABC, Generic[T]):
     @property
     @abstractmethod
     def _sequence(self: SortedSet[T], /) -> SortedSequence[T]:
+        """
+        Must be implemented for the code to function.
+        """
         raise NotImplementedError("_sequence is a required property of sorted sets")
 
     @property
     @abstractmethod
     def _set(self: SortedSet[T], /) -> AbstractSet[T]:
+        """
+        Must be implemented for the code to function.
+        """
         raise NotImplementedError("_set is a required property of sorted sets")
 
 
@@ -533,6 +546,9 @@ class SortedMutableSet(SortedSet[T_co], set[T_co], ABC, Generic[T_co]):
 
     @classmethod
     def from_iterable(cls: Type[SortedMutableSet[T_co]], iterable: Iterable[T_co], /) -> SortedMutableSet[T_co]:
+        """
+        Return SortedMutableSet implementation of other iterable.
+        """
         if isinstance(iterable, Iterable):
             return cls.from_sorted(sorted({*iterable}))  # type: ignore
         else:
@@ -541,6 +557,10 @@ class SortedMutableSet(SortedSet[T_co], set[T_co], ABC, Generic[T_co]):
     @abstractmethod
     @classmethod
     def from_sorted(cls: Type[SortedMutableSet[T]], iterable: Iterable[T], /) -> SortedMutableSet[T]:
+        """
+        Return SortedSet implementation of other iterable.
+        from_sorted should assume other iterable is already sorted.
+        """
         raise NotImplementedError("from_sorted is a required method for sorted mutable sets")
 
     def intersection(self: SortedMutableSet[T_co], /, *iterables: Iterable[Any]) -> SortedMutableSet[T_co]:
@@ -646,11 +666,17 @@ class SortedMutableSet(SortedSet[T_co], set[T_co], ABC, Generic[T_co]):
     @property
     @abstractmethod
     def _sequence(self: SortedMutableSet[T_co], /) -> SortedMutableSequence[T_co]:
+        """
+        Must be implemented for the code to function.
+        """
         raise NotImplementedError("_sequence is a required property of sorted mutable sets")
 
     @property
     @abstractmethod
     def _set(self: SortedMutableSet[T_co], /) -> MutableSet[T_co]:
+        """
+        Must be implemented for the code to function.
+        """
         raise NotImplementedError("_set is a required property of sorted mutable sets")
 
 
