@@ -58,8 +58,9 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             index += len(self)
         if not 0 <= index < len(self):
             raise IndexError("index out of range")
+        L0 = self._data
         if index < len(self) // 2:
-            for i1, (L1, len1) in enumerate(zip(self._data, self._len1)):
+            for i1, (L1, len1) in enumerate(zip(L0, self._len1)):
                 if len1 <= index:
                     index -= len1
                 else:
@@ -68,17 +69,17 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
                 assert False, "index out of range, despite being checked"
         else:
             index = len(self) - index - 1
-            for i1, (L1, len1) in enumerate(zip(reversed(self._data), reversed(self._len1))):
+            for i1, (L1, len1) in enumerate(zip(reversed(L0), reversed(self._len1))):
                 if len1 <= index:
                     index -= len1
                 else:
                     break
             else:
                 assert False, "index out of range, despite being checked"
-            i1 = len(self._data) - i1 - 1
+            i1 = len(L0) - i1 - 1
             index = len1 - index - 1
         if index < len1 // 2:
-            for L2 in L1:
+            for i2, L2 in enumerate(L1):
                 if len(L2) <= index:
                     index -= len(L2)
                 else:
@@ -94,8 +95,34 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
                     break
             else:
                 assert False, "index out of range, despite being checked"
+            i2 = len(L1) - i2 - 1
             index = len(L2) - index - 1
-        del L2[index]
+        i3 = index
+        # The chunksize is used to guarantee roughly O(n^(1/3)) worst-case time complexities.
+        chunksize = max(750, round(len(self) ** (1/3)))
+        rng = chunksize * chunksize * self.__rng.random()
+        len1 = len(L1) // 2
+        len2 = len(L2) // 2
+        # Low probability that `[[x], [y]] -> [[x, y]]`.
+        if rng < 1 and len(self._data) > 1:
+            if i1 == 0 or i1 < len(L0) - 1 and len(L0[i1 - 1]) < len(L0[i1 + 1]):
+                self._len1[i1] += self._len1.pop(i1 + 1)
+                L1.extend(L0.pop(i1 + 1))
+            else:
+                L1 = L0[i1 - 1]
+                i2 += len(L1)
+                self._len1[i1 - 1] += self._len1.pop(i1)
+                L1.extend(L0.pop(i1))
+        # Medium probability that `[[[x], [y]]] -> [[[x, y]]]`.
+        if rng < chunksize:
+            if i2 == 0 or i2 < len(L1) - 1 and len(L1[i2 - 1]) < len(L1[i2 + 1]):
+                L2.extend(L1.pop(i1 + 1))
+            else:
+                L2 = L1[i2 - 1]
+                i3 += len(L2)
+                L2.extend(L1.pop(i2))
+        # Delete the indexed item.
+        del L2[i3]
         self._len0 -= 1
         self._len1[i1] -= 1
 
@@ -247,6 +274,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
                 L2 = L1[i2 + 1]
         L2.insert(i3, value)
         self._len0 += 1
+        self._len1[i1] += 1
 
     def discard(self: SortedList[T], value: T, /) -> None:
         if len(self) == 0:
@@ -298,6 +326,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         elif len(L2) == 1:
             del L1[i2]
             self._len0 -= 1
+            self._len1[i1] -= 1
             return
         chunksize = max(750, round(len(self) ** (1/3)))
         rng = chunksize * chunksize * self.__rng.random()
@@ -310,7 +339,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             else:
                 L1 = L0[i1 - 1]
                 i2 += len(L1)
-                self._len1[i1 - 1] += L0.pop(i1)
+                self._len1[i1 - 1] += self._len1.pop(i1)
                 L1.extend(L0.pop(i1))
         if rng < chunksize:
             if i2 == 0 or i2 < len(L1) - 1 and len(L1[i2 - 1]) < len(L1[i2 + 1]):
@@ -321,18 +350,20 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
                 L2.extend(L1.pop(i2))
         del L2[i3]
         self._len0 -= 1
+        self._len1[i1] -= 1
 
     @classmethod
     def from_iterable(cls: Type[SortedList[T]], iterable: Iterable[T], /) -> SortedList[T]:
         if not isinstance(iterable, Iterable):
-            raise TypeError(f"{type(self).__name__} expected an iterable, got {iterable!r}")
+            raise TypeError(f"{cls.__name__} expected an iterable, got {iterable!r}")
         return cls(iterable)
 
     @classmethod
     def from_sorted(cls: Type[SortedList[T]], iterable: Iterable[T], /) -> SortedList[T]:
         if not isinstance(iterable, Iterable):
-            raise TypeError(f"{type(self).__name__} expected an iterable, got {iterable!r}")
+            raise TypeError(f"{cls.__name__} expected an iterable, got {iterable!r}")
         self = cls()
+        data = iterable if isinstance(iterable, Sequence) else tuple(iterable)
         chunksize = max(750, round(len(data) ** (1/3)))
         iterator = iter(iterable)
         self._data = [*iter(lambda: [*iter(lambda: [*islice(iterator, chunksize)], [])], [])]
@@ -350,7 +381,9 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
 
     __slots__ = ("_data", "_len0", "_len1", "__rng")
 
-    def __init__(self: SortedKeyList[T], iterable: Optional[Iterable[T]], /, key: Callable[[T], Any]) -> None:
+    def __init__(self: SortedKeyList[T], iterable: Optional[Iterable[T]] = None, /, *, key: Callable[[T], Any]) -> None:
+        data: Sequence[T]
+        # Sort the data.
         if iterable is None:
             data = ()
         elif isinstance(iterable, Iterable):
@@ -382,8 +415,9 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
             index += len(self)
         if not 0 <= index < len(self):
             raise IndexError("index out of range")
+        L0 = self._data
         if index < len(self) // 2:
-            for i1, (L1, len1) in enumerate(zip(self._data, self._len1)):
+            for i1, (L1, len1) in enumerate(zip(L0, self._len1)):
                 if len1 <= index:
                     index -= len1
                 else:
@@ -392,17 +426,17 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
                 assert False, "index out of range, despite being checked"
         else:
             index = len(self) - index - 1
-            for i1, (L1, len1) in enumerate(zip(reversed(self._data), reversed(self._len1))):
+            for i1, (L1, len1) in enumerate(zip(reversed(L0), reversed(self._len1))):
                 if len1 <= index:
                     index -= len1
                 else:
                     break
             else:
                 assert False, "index out of range, despite being checked"
-            i1 = len(self._data) - i1 - 1
+            i1 = len(L0) - i1 - 1
             index = len1 - index - 1
         if index < len1 // 2:
-            for L2 in L1:
+            for i2, L2 in enumerate(L1):
                 if len(L2) <= index:
                     index -= len(L2)
                 else:
@@ -411,15 +445,41 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
                 assert False, "index out of range, despite being checked"
         else:
             index = len1 - index - 1
-            for L2 in reversed(L1):
+            for i2, L2 in enumerate(reversed(L1)):
                 if len(L2) <= index:
                     index -= len(L2)
                 else:
                     break
             else:
                 assert False, "index out of range, despite being checked"
+            i2 = len(L1) - i2 - 1
             index = len(L2) - index - 1
-        del L2[index]
+        i3 = index
+        # The chunksize is used to guarantee roughly O(n^(1/3)) worst-case time complexities.
+        chunksize = max(750, round(len(self) ** (1/3)))
+        rng = chunksize * chunksize * self.__rng.random()
+        len1 = len(L1) // 2
+        len2 = len(L2) // 2
+        # Low probability that `[[x], [y]] -> [[x, y]]`.
+        if rng < 1 and len(self._data) > 1:
+            if i1 == 0 or i1 < len(L0) - 1 and len(L0[i1 - 1]) < len(L0[i1 + 1]):
+                self._len1[i1] += self._len1.pop(i1 + 1)
+                L1.extend(L0.pop(i1 + 1))
+            else:
+                L1 = L0[i1 - 1]
+                i2 += len(L1)
+                self._len1[i1 - 1] += self._len1.pop(i1)
+                L1.extend(L0.pop(i1))
+        # Medium probability that `[[[x], [y]]] -> [[[x, y]]]`.
+        if rng < chunksize:
+            if i2 == 0 or i2 < len(L1) - 1 and len(L1[i2 - 1]) < len(L1[i2 + 1]):
+                L2.extend(L1.pop(i1 + 1))
+            else:
+                L2 = L1[i2 - 1]
+                i3 += len(L2)
+                L2.extend(L1.pop(i2))
+        # Delete the indexed item.
+        del L2[i3]
         self._len0 -= 1
         self._len1[i1] -= 1
 
@@ -573,6 +633,7 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
                 L2 = L1[i2 + 1]
         L2.insert(i3, value)
         self._len0 += 1
+        self._len1[i1] += 1
 
     def discard(self: SortedKeyList[T], value: T, /) -> None:
         if len(self) == 0:
@@ -626,6 +687,7 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
         elif len(L2) == 1:
             del L1[i2]
             self._len0 -= 1
+            self._len1[i1] -= 1
             return
         chunksize = max(750, round(len(self) ** (1/3)))
         rng = chunksize * chunksize * self.__rng.random()
@@ -638,7 +700,7 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
             else:
                 L1 = L0[i1 - 1]
                 i2 += len(L1)
-                self._len1[i1 - 1] += L0.pop(i1)
+                self._len1[i1 - 1] += self._len1.pop(i1)
                 L1.extend(L0.pop(i1))
         if rng < chunksize:
             if i2 == 0 or i2 < len(L1) - 1 and len(L1[i2 - 1]) < len(L1[i2 + 1]):
@@ -649,22 +711,24 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
                 L2.extend(L1.pop(i2))
         del L2[i3]
         self._len0 -= 1
+        self._len1[i1] -= 1
 
     @classmethod
     def from_iterable(cls: Type[SortedKeyList[T]], iterable: Iterable[T], /, key: Callable[[T], Any]) -> SortedKeyList[T]:
         if not isinstance(iterable, Iterable):
-            raise TypeError(f"{type(self).__name__} expected an iterable, got {iterable!r}")
+            raise TypeError(f"{cls.__name__} expected an iterable, got {iterable!r}")
         elif not callable(key):
-            raise TypeError(f"{type(self).__name__} expected a callable key, got {key!r}")
-        return cls(iterable, key)
+            raise TypeError(f"{cls.__name__} expected a callable key, got {key!r}")
+        return cls(iterable, key=key)
 
     @classmethod
     def from_sorted(cls: Type[SortedKeyList[T]], iterable: Iterable[T], /, key: Callable[[T], Any]) -> SortedKeyList[T]:
         if not isinstance(iterable, Iterable):
-            raise TypeError(f"{type(self).__name__} expected an iterable, got {iterable!r}")
+            raise TypeError(f"{cls.__name__} expected an iterable, got {iterable!r}")
         elif not callable(key):
-            raise TypeError(f"{type(self).__name__} expected a callable key, got {key!r}")
+            raise TypeError(f"{cls.__name__} expected a callable key, got {key!r}")
         self = cls(key=key)
+        data = iterable if isinstance(iterable, Sequence) else tuple(iterable)
         chunksize = max(750, round(len(data) ** (1/3)))
         iterator = iter(iterable)
         self._data = [*iter(lambda: [*iter(lambda: [*islice(iterator, chunksize)], [])], [])]
