@@ -113,8 +113,8 @@ class SortedKeySequence(Sequence[T], SortedKeyConstructor[T], ABC, Generic[T]):
         else:
             return cls.from_sorted(sorted(iterable, key=key), key)
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def from_sorted(cls: Type[SortedKeySequence[T]], iterable: Iterable[T], /, key: Callable[[T], Any]) -> SortedKeySequence[T]:
         raise NotImplementedError(f"from_sorted is a required method for sorted key sequences")
 
@@ -195,8 +195,8 @@ class SortedKeyMutableSequence(MutableSequence[T], SortedKeySequence[T], ABC, Ge
         else:
             return cls.from_sorted(sorted(iterable, key=key), key)
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def from_sorted(cls: Type[SortedKeyMutableSequence[T]], iterable: Iterable[T], /, key: Callable[[T], Any]) -> SortedKeyMutableSequence[T]:
         raise NotImplementedError("from_sorted is a required method for sorted key mutable sequences")
 

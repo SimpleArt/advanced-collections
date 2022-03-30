@@ -50,8 +50,8 @@ class SortedKeyConstructor(SortedKeyIterable[T], ABC, Generic[T]):
         else:
             return cls.from_sorted(sorted(iterable, key=key), key)
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def from_sorted(cls: Type[SortedKeyConstructor[T]], iterable: Iterable[T], /, key: Callable[[T], Any]) -> SortedKeyConstructor[T]:
         raise NotImplementedError("from_sorted is a required method for sorted key constructors")
 

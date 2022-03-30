@@ -159,8 +159,8 @@ class SortedSet(AbstractSet[T], SortedSequence[T], ABC, Generic[T]):
         else:
             raise TypeError(f"from_iterable expects an iterable, got {iterable!r}")
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def from_sorted(cls: Type[SortedSet[T]], iterable: Iterable[T], /) -> SortedSet[T]:
         raise NotImplementedError("from_sorted is a required method for sorted sets")
 
@@ -372,8 +372,8 @@ class SortedMutableSet(SortedSet[T_co], set[T_co], ABC, Generic[T_co]):
         else:
             raise TypeError(f"from_iterable expects an iterable, got {iterable!r}")
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def from_sorted(cls: Type[SortedMutableSet[T]], iterable: Iterable[T], /) -> SortedMutableSet[T]:
         raise NotImplementedError("from_sorted is a required method for sorted mutable sets")
 

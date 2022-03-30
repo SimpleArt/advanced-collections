@@ -111,8 +111,8 @@ class SortedSequence(Sequence[T], SortedConstructor[T], ABC, Generic[T]):
         else:
             raise TypeError(f"from_iterable expects an iterable, got {iterable!r}")
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def from_sorted(cls: Type[SortedSequence[T]], iterable: Iterable[T], /) -> SortedSequence[T]:
         raise NotImplementedError(f"from_sorted is a required method for sorted sequences")
 
@@ -187,12 +187,9 @@ class SortedMutableSequence(MutableSequence[T], SortedSequence[T], ABC, Generic[
             raise TypeError(f"from_iterable expects an iterable, got {iterable!r}")
 
     @classmethod
+    @abstractmethod
     def from_sorted(cls: Type[SortedMutableSequence[T]], iterable: Iterable[T], /) -> SortedMutableSequence[T]:
-        if isinstance(iterable, Iterable):
-            import more_collections.sorted as mcs
-            return mcs.SortedList(iterable)
-        else:
-            raise TypeError(f"from_sorted expects an iterable, got {iterable!r}")
+        raise NotImplementedError(f"from_sorted is a required method for sorted mutable sequences")
 
     def insert(self: SortedMutableSequence[T], index: int, value: T, /) -> None:
         raise NotImplementedError("insert is not usable for sorted mutable sequences")
