@@ -27,21 +27,33 @@ class SortedSet(AbstractSet[T], SortedSequence[T], ABC, Generic[T]):
     __slots__ = ()
 
     def __and__(self: SortedSet[T], other: Iterable[Any], /) -> SortedSet[T]:
+        """
+        Return self & other.
+        """
         if isinstance(other, AbstractSet):
             return self.intersection(other)
         else:
             return NotImplemented
 
     def __contains__(self: SortedSet[Any], element: Any, /) -> bool:
+        """
+        x.__contains__(y) <==> y in x.
+        """
         return element in self._set
 
     def __eq__(self: SortedSet[Any], other: Any, /) -> bool:
+        """
+        Return self == other.
+        """
         if isinstance(other, AbstractSet):
             return self._set == other
         else:
             return NotImplemented
 
     def __ge__(self: SortedSet[Any], other: Any, /) -> bool:
+        """
+        Return self >= other.
+        """
         if isinstance(other, AbstractSet):
             return self._set >= other
         else:
@@ -49,13 +61,22 @@ class SortedSet(AbstractSet[T], SortedSequence[T], ABC, Generic[T]):
 
     @overload
     def __getitem__(self: SortedSet[T], index: int, /) -> T:
+        """
+        Linter use only. No method definition.
+        """
         ...
 
     @overload
     def __getitem__(self: SortedSet[T], index: slice, /) -> SortedSet[T]:
+        """
+        Linter use only. No method definition.
+        """
         ...
 
     def __getitem__(self, index, /):
+        """
+        x.__getitem__(y) <==> x[y].
+        """
         if isinstance(index, slice):
             range_ = range(len(self))[index]
             if range_.step < 0:
@@ -66,36 +87,58 @@ class SortedSet(AbstractSet[T], SortedSequence[T], ABC, Generic[T]):
             return self._sequence[index]
 
     def __gt__(self: SortedSet[Any], other: Any, /) -> bool:
+        """
+        Return self > other.
+        """
         if isinstance(other, AbstractSet):
             return self._set > other
         else:
             return NotImplemented
 
     def __iter__(self: SortedSet[T], /) -> SortedIterator[T]:
+        """
+        Implement iter(self).
+        """
         return iter(self._sequence)
 
     def __le__(self: SortedSet[Any], other: Any, /) -> bool:
+        """
+        Return self <= other.
+        """
         if isinstance(other, AbstractSet):
             return self._set <= other
         else:
             return NotImplemented
 
     def __len__(self: SortedSet[Any], /) -> int:
+        """
+        Return len(self).
+        """
         return len(self._set)
 
     def __lt__(self: SortedSet[Any], other: Any, /) -> bool:
+        """
+        Return self < other.
+        """
         if isinstance(other, AbstractSet):
             return self._set < other
         else:
             return NotImplemented
 
     def __ne__(self: SortedSet[T], other: Any, /) -> bool:
+        """
+        Return self != other.
+        """
         if isinstance(other, AbstractSet):
             return self._set != other
         else:
             return NotImplemented
 
     def __or__(self: SortedSet[T], other: Iterable[S], /) -> SortedSet[Union[T, S]]:
+        """
+        Return self | other.
+        __or__ and __ror__ are equivalent here.
+        """
         if isinstance(other, AbstractSet):
             return self.union(other)
         else:
@@ -104,15 +147,24 @@ class SortedSet(AbstractSet[T], SortedSequence[T], ABC, Generic[T]):
     __ror__ = __or__
 
     def __rand__(self: SortedSet[Any], other: Iterable[S], /) -> SortedSet[S]:
+        """
+        Return other & self.
+        """
         if isinstance(other, AbstractSet):
             return self.intersection(other)
         else:
             return NotImplemented
 
     def __reversed__(self: SortedSet[T], /) -> Iterator[T]:
+        """
+        Return a reverse iterator over the Sorted set.
+        """
         return reversed(self._sequence)
 
     def __rsub__(self: SortedSet[Any], other: Iterable[S], /) -> SortedSet[S]:
+        """
+        Return other - self.
+        """
         if isinstance(other, AbstractSet):
             import more_collections.sorted as mcs
             set_: SortedMutableSet[S] = mcs.SortedSet.from_iterable(other)
@@ -122,12 +174,19 @@ class SortedSet(AbstractSet[T], SortedSequence[T], ABC, Generic[T]):
             return NotImplemented
 
     def __sub__(self: SortedSet[T], other: Iterable[Any], /) -> SortedSet[T]:
+        """
+        Return self - other.
+        """
         if isinstance(other, AbstractSet):
             return self.difference(other)
         else:
             return NotImplemented
 
     def __xor__(self: SortedSet[T], other: Iterable[S], /) -> SortedSet[Union[T, S]]:
+        """
+        Return self ^ other.
+        __xor__ and __rxor__ are equivalent here.
+        """
         if isinstance(other, AbstractSet):
             return self.symmetric_difference(other)
         else:
@@ -136,9 +195,19 @@ class SortedSet(AbstractSet[T], SortedSequence[T], ABC, Generic[T]):
     __rxor__ = __xor__
 
     def count(self: SortedSet[Any], value: Any, /) -> Literal[0, 1]:
+        """
+        Return the number of value occurences in self.
+
+        (either 0 or 1, since self is a set.)
+        """
         return 1 if value in self else 0
 
     def difference(self: SortedSet[T], /, *iterables: Iterable[Any]) -> SortedSet[T]:
+        """
+        Return the difference with multiple iterables as a new sorted set.
+
+        (i.e. all elements that are in self but not in the iterables.)
+        """
         if len(iterables) == 0:
             return self.copy()
         for iterable in iterables:
@@ -165,9 +234,17 @@ class SortedSet(AbstractSet[T], SortedSequence[T], ABC, Generic[T]):
         raise NotImplementedError("from_sorted is a required method for sorted sets")
 
     def index(self: SortedSet[Any], value: Any, /, start: int = 0, stop: Optional[int] = None, *, mode: Literal["exact", "left", "right"] = "exact") -> int:
+        """
+        Return index of value in the sorted set.
+        """
         return self._sequence.index(value, start, stop, mode=mode)
 
     def intersection(self: SortedSet[T], /, *iterables: Iterable[Any]) -> SortedSet[T]:
+        """
+        Return the intersection of self and other iterables as a new set.
+
+        (i.e. all elements that are in all iterables.)
+        """
         if len(iterables) == 0:
             return self.copy()
         for iterable in iterables:
@@ -182,12 +259,18 @@ class SortedSet(AbstractSet[T], SortedSequence[T], ABC, Generic[T]):
         return type(self).from_iterable(set_)
 
     def isdisjoint(self: SortedSet[Any], iterable: Iterable[Any], /) -> bool:
+        """
+        Return True if self and other iterable have a null intersection.
+        """
         if isinstance(iterable, Iterable):
             return self._set.isdisjoint(iterable)
         else:
             raise TypeError(f"isdisjoint argument is not iterable, got {iterable!r}")
 
     def issubset(self: SortedSet[Any], iterable: Iterable[Any], /) -> bool:
+        """
+        Return whether self is a subset of other iterable.
+        """
         if not isinstance(iterable, Iterable):
             raise TypeError(f"issubset argument is not iterable, got {iterable!r}")
         elif isinstance(iterable, set):
@@ -200,6 +283,9 @@ class SortedSet(AbstractSet[T], SortedSequence[T], ABC, Generic[T]):
             return len({x for x in iterable if x in self}) == len(self)
 
     def issuperset(self: SortedSet[Any], iterable: Iterable[Any], /) -> bool:
+        """
+        Return whether self is a superset of `iterable`.
+        """
         if not isinstance(iterable, Iterable):
             raise TypeError(f"issuperset argument is not iterable, got {iterable!r}")
         elif isinstance(self._set, set):
@@ -208,6 +294,11 @@ class SortedSet(AbstractSet[T], SortedSequence[T], ABC, Generic[T]):
             return all(x in self for x in iterable)
 
     def symmetric_difference(self: SortedSet[T], /, *iterables: Iterable[S]) -> SortedSet[Union[T, S]]:
+        """
+        Return the symmetric difference of self and other iterables as a new set.
+
+        (i.e. all elements that are in exactly one of the iterables.)
+        """
         if len(iterables) == 0:
             return self.copy()  # type: ignore
         for iterable in iterables:
@@ -224,6 +315,11 @@ class SortedSet(AbstractSet[T], SortedSequence[T], ABC, Generic[T]):
         return type(self).from_iterable(set_)  # type: ignore
 
     def union(self: SortedSet[T], /, *iterables: Iterable[S]) -> SortedSet[Union[T, S]]:
+        """
+        Return the union of self and other iterables as a new set.
+
+        (i.e. all elements that are in any iterable.)
+        """
         for iterable in iterables:
             if not isinstance(iterable, Iterable):
                 raise TypeError(f"union argument is not iterable, got {iterable!r}")
@@ -245,29 +341,50 @@ class SortedMutableSet(SortedSet[T_co], set[T_co], ABC, Generic[T_co]):
     __slots__ = ()
 
     def __and__(self: SortedMutableSet[T_co], other: Iterable[Any], /) -> SortedMutableSet[T_co]:
+        """
+        Return self & other.
+        """
         if isinstance(other, AbstractSet):
             return self.intersection(other)
         else:
             return NotImplemented
 
     def __copy__(self: Self, /) -> Self:
+        """
+        Return shallow copy of self.
+        """
         return type(self).from_sorted(self, self.key)  # type: ignore
 
     def __deepcopy__(self: Self, /) -> Self:
+        """
+        Return deep copy of self.
+        """
         return type(self).from_sorted((deepcopy(x) for x in self), self.key)  # type: ignore
 
     @overload
     def __getitem__(self: SortedMutableSet[T_co], index: int, /) -> T_co:
+        """
+        Linter use only. No method definition.
+        """
         ...
 
     @overload
     def __getitem__(self: SortedMutableSet[T_co], index: slice, /) -> SortedMutableSet[T_co]:
+        """
+        Linter use only. No method definition.
+        """
         ...
 
     def __getitem__(self, index, /):
+        """
+        x.__getitem__(y) <==> x[y]
+        """
         return self._sequence[index]
 
     def __iand__(self: SortedMutableSet[T_co], other: Iterable[Any], /) -> SortedMutableSet[T_co]:
+        """
+        Return self &= other.
+        """
         if isinstance(other, Iterable):
             self.intersection_update(other)
             return self
@@ -275,6 +392,9 @@ class SortedMutableSet(SortedSet[T_co], set[T_co], ABC, Generic[T_co]):
             return NotImplemented
 
     def __ior__(self: SortedMutableSet[T_co], other: Iterable[T], /) -> SortedMutableSet[Union[T_co, T]]:
+        """
+        Return self |= other.
+        """
         if isinstance(other, Iterable):
             self.update(other)  # type: ignore
             return self  # type: ignore
@@ -282,9 +402,15 @@ class SortedMutableSet(SortedSet[T_co], set[T_co], ABC, Generic[T_co]):
             return NotImplemented
 
     def __iter__(self: SortedMutableSet[T_co], /) -> SortedIterator[T_co]:
+        """
+        Implement iter(self).
+        """
         return iter(self._sequence)
 
     def __isub__(self: SortedMutableSet[T_co], other: Iterable[Any], /) -> SortedMutableSet[T_co]:
+        """
+        Return self -= other.
+        """
         if isinstance(other, Iterable):
             self.difference_update(other)
             return self
@@ -292,6 +418,9 @@ class SortedMutableSet(SortedSet[T_co], set[T_co], ABC, Generic[T_co]):
             return NotImplemented
 
     def __ixor__(self: SortedMutableSet[T_co], other: Iterable[T], /) -> SortedMutableSet[Union[T_co, T]]:
+        """
+        Return self ^= other.
+        """
         if isinstance(other, Iterable):
             self.symmetric_difference_update(other)  # type: ignore
             return self  # type: ignore
@@ -299,6 +428,10 @@ class SortedMutableSet(SortedSet[T_co], set[T_co], ABC, Generic[T_co]):
             return NotImplemented
 
     def __or__(self: SortedMutableSet[T_co], other: Iterable[T], /) -> SortedMutableSet[Union[T_co, T]]:
+        """
+        Return self | other.
+        __or__ and __ror__ are equivalent here.
+        """
         if isinstance(other, AbstractSet):
             return self.union(other)
         else:
@@ -307,12 +440,18 @@ class SortedMutableSet(SortedSet[T_co], set[T_co], ABC, Generic[T_co]):
     __ror__ = __or__
 
     def __rand__(self: SortedMutableSet[Any], other: Iterable[T], /) -> SortedMutableSet[T]:
+        """
+        Return other & self.
+        """
         if isinstance(other, AbstractSet):
             return self.intersection(other)  # type: ignore
         else:
             return NotImplemented
 
     def __rsub__(self: SortedMutableSet[Any], other: Iterable[T], /) -> SortedMutableSet[T]:
+        """
+        Return other - self.
+        """
         if isinstance(other, AbstractSet):
             import more_collections.sorted as mcs
             set_ = mcs.SortedSet.from_iterable(other)
@@ -322,12 +461,19 @@ class SortedMutableSet(SortedSet[T_co], set[T_co], ABC, Generic[T_co]):
             return NotImplemented
 
     def __sub__(self: SortedMutableSet[T_co], other: Iterable[Any], /) -> SortedMutableSet[T_co]:
+        """
+        Return self - other.
+        """
         if isinstance(other, AbstractSet):
             return self.difference(other)
         else:
             return NotImplemented
 
     def __xor__(self: SortedMutableSet[T_co], other: Iterable[T], /) -> SortedMutableSet[Union[T_co, T]]:
+        """
+        Return self ^ other.
+        __xor__ and __rxor__ are equivalent here.
+        """
         if isinstance(other, AbstractSet):
             return self.symmetric_difference(other)
         else:
@@ -336,22 +482,39 @@ class SortedMutableSet(SortedSet[T_co], set[T_co], ABC, Generic[T_co]):
     __rxor__ = __xor__
 
     def add(self: SortedMutableSet[T], value: T, /) -> None:
+        """
+        Return self + value.
+        """
         len_ = len(self._set)
         self._set.add(value)
         if len(self._set) != len_:
             self._sequence.append(value)
 
     def clear(self: SortedMutableSet[Any], /) -> None:
+        """
+        Remove all elements from self.
+        """
         self._sequence.clear()
         self._set.clear()
 
     def copy(self: Self, /) -> Self:
+        """
+        Return shallow copy of self.
+        """
         return copy(self)
 
     def difference(self: SortedMutableSet[T_co], /, *iterables: Iterable[Any]) -> SortedMutableSet[T_co]:
+        """
+        Return the difference with multiple iterables as a new sorted set.
+
+        (i.e. all elements that are in self but not in the iterables.)
+        """
         return super().difference(*iterables)  # type: ignore
 
     def difference_update(self: SortedMutableSet[Any], /, *iterables: Iterable[Any]) -> None:
+        """
+        Remove all elements in other iterables from self.
+        """
         for iterable in iterables:
             if not isinstance(iterable, Iterable):
                 raise TypeError(f"difference_update argument is not iterable, got {iterable!r}")
@@ -360,6 +523,9 @@ class SortedMutableSet(SortedSet[T_co], set[T_co], ABC, Generic[T_co]):
                 self.discard(x)
 
     def discard(self: SortedMutableSet[Any], value: Any, /) -> None:
+        """
+        Remove value from set, if it is a member.
+        """
         len_ = len(self._set)
         self._set.discard(value)
         if len(self._set) != len_:
@@ -378,9 +544,17 @@ class SortedMutableSet(SortedSet[T_co], set[T_co], ABC, Generic[T_co]):
         raise NotImplementedError("from_sorted is a required method for sorted mutable sets")
 
     def intersection(self: SortedMutableSet[T_co], /, *iterables: Iterable[Any]) -> SortedMutableSet[T_co]:
+        """
+        Return the intersection of self and other iterables as a new set.
+
+        (i.e. all elements that are in all sets.)
+        """
         return super().intersection(*iterables)  # type: ignore
 
     def intersection_update(self: SortedMutableSet[Any], /, *iterables: Iterable[Any]) -> None:
+        """
+        Update self with the intersection of self and other iterables.
+        """
         if len(iterables) == 0:
             self.clear()
             return
@@ -397,6 +571,10 @@ class SortedMutableSet(SortedSet[T_co], set[T_co], ABC, Generic[T_co]):
         self.difference_update(set_)
 
     def pop(self: SortedMutableSet[T_co], index: int = -1, /) -> T_co:
+        """
+        Remove and return value from element at index.
+        Raises IndexError if the index is out of range.
+        """
         if not isinstance(index, SupportsIndex):
             raise TypeError(f"pop could not interpret index as an integer, got {index!r}")
         index = operator.index(index)
@@ -410,6 +588,10 @@ class SortedMutableSet(SortedSet[T_co], set[T_co], ABC, Generic[T_co]):
         return value
 
     def remove(self: SortedMutableSet[Any], value: Any, /) -> None:
+        """
+        Remove value set; it must be a member.
+        If the element is not a member, raise a KeyError.
+        """
         len_ = len(self._set)
         self._set.discard(value)
         if len(self._set) == len_:
@@ -417,9 +599,17 @@ class SortedMutableSet(SortedSet[T_co], set[T_co], ABC, Generic[T_co]):
         self._sequence.remove(value)
 
     def symmetric_difference(self: SortedMutableSet[T_co], /, *iterables: Iterable[T]) -> SortedMutableSet[Union[T_co, T]]:
+        """
+        Return the symmetric difference of self and other iterables as a new set.
+
+        (i.e. all elements that are in exactly one of the iterables.)
+        """
         return super().symmetric_difference(*iterables)  # type: ignore
 
     def symmetric_difference_update(self: SortedMutableSet[T_co], /, *iterables: Iterable[T_co]) -> None:
+        """
+        Update self with the symmetric difference of self and other iterables.
+        """
         if len(iterables) == 0:
             return
         for iterable in iterables:
@@ -435,9 +625,17 @@ class SortedMutableSet(SortedSet[T_co], set[T_co], ABC, Generic[T_co]):
                 self.add(x)
 
     def union(self: SortedMutableSet[T_co], /, *iterables: Iterable[T]) -> SortedMutableSet[Union[T_co, T]]:
+        """
+        Return the union of self and other iterables as a new set.
+
+        (i.e. all elements that are in any iterable.)
+        """
         return super().union(*iterables)  # type: ignore
 
     def update(self: SortedMutableSet[T_co], /, *iterables: Iterable[T_co]) -> None:
+        """
+        Update self with the union of self and other iterables.
+        """
         for iterable in iterables:
             if not isinstance(iterable, Iterable):
                 raise TypeError(f"update argument is not iterable, got {iterable!r}")
