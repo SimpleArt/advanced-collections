@@ -50,6 +50,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
                 range_ = range_[::-1]
             for i in range_:
                 del self[i]
+            return
         elif not isinstance(index, SupportsIndex):
             raise TypeError(f"index could not be interpreted as an integer or slice, got {index!r}")
         index = operator.index(index)
@@ -317,6 +318,7 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
                 range_ = range_[::-1]
             for i in range_:
                 del self[i]
+            return
         elif not isinstance(index, SupportsIndex):
             raise TypeError(f"index could not be interpreted as an integer or slice, got {index!r}")
         index = operator.index(index)
