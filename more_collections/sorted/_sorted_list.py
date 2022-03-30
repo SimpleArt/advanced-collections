@@ -6,9 +6,9 @@ from random import Random
 from typing import Any, Generic, Optional, SupportsIndex, Type, TypeVar, Union, overload
 
 if sys.version_info < (3, 9):
-    from typing import Callable, Iterable, Iterator, Sequence, List as list, Set as set
+    from typing import Callable, Iterable, Iterator, Sequence, Sized, List as list, Set as set
 else:
-    from collections.abc import Callable, Iterable, Iterator, Sequence
+    from collections.abc import Callable, Iterable, Iterator, Sequence, Sized
 
 from ._abc_iterable import SortedIterator
 from ._abc_sequence import SortedMutableSequence
@@ -31,24 +31,31 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
     __slots__ = ("_data", "_len0", "_len1", "__rng")
 
     def __init__(self: SortedList[T], iterable: Optional[Iterable[T]] = None, /) -> None:
-        data: Sequence[T]
+        data: list[T]
         # Sort the data.
         if iterable is None:
-            data = ()
+            data = []
         elif isinstance(iterable, Iterable):
             data = sorted(iterable)  # type: ignore
         else:
             raise TypeError(f"{type(self).__name__} expected an iterable, got {iterable!r}")
         # The chunksize is used to guarantee roughly O(n^(1/3)) worst-case time complexities.
         chunksize = max(750, round(len(data) ** (1/3)))
-        iterator = iter(data)
         self._len0 = len(data)
         # Segment the data from:
         #     data = [0, 1, 2, 3, ...]
         # to a 3D list:
         #     data = [[[0, 1], [2, 3]], [...], ...]
-        self._data = [*iter(lambda: [*iter(lambda: [*islice(iterator, chunksize)], [])], [])]  # type: ignore
-        self._len1 = [sum(len(L2) for L2 in L1) for L1 in self._data]
+        self._data = [
+            [
+                data[i2 : i2 + chunksize]
+                for i2 in range(i1, min(i1 + chunksize ** 2, len(data)), chunksize)
+            ]
+            for i1 in range(0, len(data), chunksize ** 2)
+        ]
+        self._len1 = [chunksize ** 2] * (len(data) // chunksize ** 2)
+        if len(data) % (chunksize ** 2) != 0:
+            self._len1.append(sum(len(L2) for L2 in self._data[-1]))
         self.__rng = Random()
 
     def __delitem__(self: SortedList[T], index: Union[int, slice], /) -> None:
@@ -373,12 +380,24 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         if not isinstance(iterable, Iterable):
             raise TypeError(f"{cls.__name__} expected an iterable, got {iterable!r}")
         self = cls()
-        data = iterable if isinstance(iterable, Sequence) else tuple(iterable)
         # The chunksize is used to guarantee roughly O(n^(1/3)) worst-case time complexities.
-        chunksize = max(750, round(len(data) ** (1/3)))
-        iterator = iter(iterable)
-        self._data = [*iter(lambda: [*iter(lambda: [*islice(iterator, chunksize)], [])], [])]
-        self._len1 = [sum(len(L2) for L2 in L1) for L1 in self._data]
+        chunksize = 750
+        if isinstance(iterable, Sized):
+            chunksize = max(chunksize, round(len(iterable) ** (1 / 3)))
+        if isinstance(iterable, list):
+            self._data = [
+                [
+                    iterable[i2 : i2 + chunksize]
+                    for i2 in range(i1, min(i1 + chunksize ** 2, len(iterable)), chunksize)
+                ]
+                for i1 in range(0, len(iterable), chunksize ** 2)
+            ]
+        else:
+            iterator = iter(iterable)
+            self._data = [*iter(lambda: [*iter(lambda: [*islice(iterator, chunksize)], [])], [])]
+        self._len1 = [chunksize ** 2] * (len(self._data) - 1)
+        if len(self._data) > 0:
+            self._len1.append(sum(len(L2) for L2 in self._data[-1]))
         self._len0 = sum(self._len1)
         return self
 
@@ -393,10 +412,10 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
     __slots__ = ("_data", "_len0", "_len1", "__rng")
 
     def __init__(self: SortedKeyList[T], iterable: Optional[Iterable[T]] = None, /, *, key: Callable[[T], Any]) -> None:
-        data: Sequence[T]
+        data: list[T]
         # Sort the data.
         if iterable is None:
-            data = ()
+            data = []
         elif isinstance(iterable, Iterable):
             if not callable(key):
                 raise TypeError(f"{type(self).__name__} expected a callable key, got {key!r}")
@@ -405,14 +424,21 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
             raise TypeError(f"{type(self).__name__} expected an iterable, got {iterable!r}")
         # The chunksize is used to guarantee roughly O(n^(1/3)) worst-case time complexities.
         chunksize = max(750, round(len(data) ** (1/3)))
-        iterator = iter(data)
         self._len0 = len(data)
         # Segment the data from:
         #     data = [0, 1, 2, 3, ...]
         # to a 3D list:
         #     data = [[[0, 1], [2, 3]], [...], ...]
-        self._data = [*iter(lambda: [*iter(lambda: [*islice(iterator, chunksize)], [])], [])]  # type: ignore
-        self._len1 = [sum(len(L2) for L2 in L1) for L1 in self._data]
+        self._data = [
+            [
+                data[i2 : i2 + chunksize]
+                for i2 in range(i1, min(i1 + chunksize ** 2, len(data)), chunksize)
+            ]
+            for i1 in range(0, len(data), chunksize ** 2)
+        ]
+        self._len1 = [chunksize ** 2] * (len(data) // chunksize ** 2)
+        if len(data) % (chunksize ** 2) != 0:
+            self._len1.append(sum(len(L2) for L2 in self._data[-1]))
         self.__key = key  # type: ignore
         self.__rng = Random()
 
@@ -746,11 +772,23 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
         elif not callable(key):
             raise TypeError(f"{cls.__name__} expected a callable key, got {key!r}")
         self = cls(key=key)
-        data = iterable if isinstance(iterable, Sequence) else tuple(iterable)
-        chunksize = max(750, round(len(data) ** (1/3)))
-        iterator = iter(iterable)
-        self._data = [*iter(lambda: [*iter(lambda: [*islice(iterator, chunksize)], [])], [])]
-        self._len1 = [sum(len(L2) for L2 in L1) for L1 in self._data]
+        chunksize = 750
+        if isinstance(iterable, Sized):
+            chunksize = max(chunksize, round(len(iterable) ** (1 / 3)))
+        if isinstance(iterable, list):
+            self._data = [
+                [
+                    iterable[i2 : i2 + chunksize]
+                    for i2 in range(i1, min(i1 + chunksize ** 2, len(iterable)), chunksize)
+                ]
+                for i1 in range(0, len(iterable), chunksize ** 2)
+            ]
+        else:
+            iterator = iter(iterable)
+            self._data = [*iter(lambda: [*iter(lambda: [*islice(iterator, chunksize)], [])], [])]
+        self._len1 = [chunksize ** 2] * (len(self._data) - 1)
+        if len(self._data) > 0:
+            self._len1.append(sum(len(L2) for L2 in self._data[-1]))
         self._len0 = sum(self._len1)
         return self
 
