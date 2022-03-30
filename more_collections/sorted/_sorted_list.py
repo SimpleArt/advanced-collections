@@ -58,17 +58,46 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             index += len(self)
         if not 0 <= index < len(self):
             raise IndexError("index out of range")
-        for L1, len1 in zip(self._data, self._len1):
-            if len1 <= index:
-                index -= len1
+        if index < len(self) // 2:
+            for i1, (L1, len1) in enumerate(zip(self._data, self._len1)):
+                if len1 <= index:
+                    index -= len1
+                else:
+                    break
             else:
-                for L2 in L1:
-                    if len(L2) <= index:
-                        index -= len(L2)
-                    else:
-                        del L2[index]
-                        return
-        assert False, "index out of range, despite being checked"
+                assert False, "index out of range, despite being checked"
+        else:
+            index = len(self) - index - 1
+            for i1, (L1, len1) in enumerate(zip(reversed(self._data), reversed(self._len1))):
+                if len1 <= index:
+                    index -= len1
+                else:
+                    break
+            else:
+                assert False, "index out of range, despite being checked"
+            i1 = len(self._data) - i1 - 1
+            index = len1 - index - 1
+        if index < len1 // 2:
+            for L2 in L1:
+                if len(L2) <= index:
+                    index -= len(L2)
+                else:
+                    break
+            else:
+                assert False, "index out of range, despite being checked"
+        else:
+            index = len1 - index - 1
+            for L2 in reversed(L1):
+                if len(L2) <= index:
+                    index -= len(L2)
+                else:
+                    break
+            else:
+                assert False, "index out of range, despite being checked"
+            index = len(L2) - index - 1
+        del L2[index]
+        self._len0 -= 1
+        self._len1[i1] -= 1
 
     @overload
     def __getitem__(self: SortedList[T], index: int, /) -> T:
@@ -92,16 +121,43 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             index += len(self)
         if not 0 <= index < len(self):
             raise IndexError("index out of range")
-        for L1, len1 in zip(self._data, self._len1):
-            if len1 <= index:
-                index -= len1
+        if index < len(self) // 2:
+            for L1, len1 in zip(self._data, self._len1):
+                if len1 <= index:
+                    index -= len1
+                else:
+                    break
             else:
-                for L2 in L1:
-                    if len(L2) <= index:
-                        index -= len(L2)
-                    else:
-                        return L2[index]
-        assert False, "index out of range, despite being checked"
+                assert False, "index out of range, despite being checked"
+        else:
+            index = len(self) - index - 1
+            for L1, len1 in zip(reversed(self._data), reversed(self._len1)):
+                if len1 <= index:
+                    index -= len1
+                else:
+                    break
+            else:
+                assert False, "index out of range, despite being checked"
+            index = len1 - index - 1
+        if index < len1 // 2:
+            for L2 in L1:
+                if len(L2) <= index:
+                    index -= len(L2)
+                else:
+                    break
+            else:
+                assert False, "index out of range, despite being checked"
+        else:
+            index = len1 - index - 1
+            for L2 in reversed(L1):
+                if len(L2) <= index:
+                    index -= len(L2)
+                else:
+                    break
+            else:
+                assert False, "index out of range, despite being checked"
+            index = len(L2) - index - 1
+        return L2[index]
 
     def __iter__(self: SortedList[T], /) -> SortedIterator[T]:
         return SortedUserIterator(
@@ -326,17 +382,46 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
             index += len(self)
         if not 0 <= index < len(self):
             raise IndexError("index out of range")
-        for L1, len1 in zip(self._data, self._len1):
-            if len1 <= index:
-                index -= len1
+        if index < len(self) // 2:
+            for i1, (L1, len1) in enumerate(zip(self._data, self._len1)):
+                if len1 <= index:
+                    index -= len1
+                else:
+                    break
             else:
-                for L2 in L1:
-                    if len(L2) <= index:
-                        index -= len(L2)
-                    else:
-                        del L2[index]
-                        return
-        assert False, "index out of range, despite being checked"
+                assert False, "index out of range, despite being checked"
+        else:
+            index = len(self) - index - 1
+            for i1, (L1, len1) in enumerate(zip(reversed(self._data), reversed(self._len1))):
+                if len1 <= index:
+                    index -= len1
+                else:
+                    break
+            else:
+                assert False, "index out of range, despite being checked"
+            i1 = len(self._data) - i1 - 1
+            index = len1 - index - 1
+        if index < len1 // 2:
+            for L2 in L1:
+                if len(L2) <= index:
+                    index -= len(L2)
+                else:
+                    break
+            else:
+                assert False, "index out of range, despite being checked"
+        else:
+            index = len1 - index - 1
+            for L2 in reversed(L1):
+                if len(L2) <= index:
+                    index -= len(L2)
+                else:
+                    break
+            else:
+                assert False, "index out of range, despite being checked"
+            index = len(L2) - index - 1
+        del L2[index]
+        self._len0 -= 1
+        self._len1[i1] -= 1
 
     @overload
     def __getitem__(self: SortedKeyList[T], index: int, /) -> T:
@@ -360,16 +445,43 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
             index += len(self)
         if not 0 <= index < len(self):
             raise IndexError("index out of range")
-        for L1, len1 in zip(self._data, self._len1):
-            if len1 <= index:
-                index -= len1
+        if index < len(self) // 2:
+            for L1, len1 in zip(self._data, self._len1):
+                if len1 <= index:
+                    index -= len1
+                else:
+                    break
             else:
-                for L2 in L1:
-                    if len(L2) <= index:
-                        index -= len(L2)
-                    else:
-                        return L2[index]
-        assert False, "index out of range, despite being checked"
+                assert False, "index out of range, despite being checked"
+        else:
+            index = len(self) - index - 1
+            for L1, len1 in zip(reversed(self._data), reversed(self._len1)):
+                if len1 <= index:
+                    index -= len1
+                else:
+                    break
+            else:
+                assert False, "index out of range, despite being checked"
+            index = len1 - index - 1
+        if index < len1 // 2:
+            for L2 in L1:
+                if len(L2) <= index:
+                    index -= len(L2)
+                else:
+                    break
+            else:
+                assert False, "index out of range, despite being checked"
+        else:
+            index = len1 - index - 1
+            for L2 in reversed(L1):
+                if len(L2) <= index:
+                    index -= len(L2)
+                else:
+                    break
+            else:
+                assert False, "index out of range, despite being checked"
+            index = len(L2) - index - 1
+        return L2[index]
 
     def __iter__(self: SortedKeyList[T], /) -> SortedKeyIterator[T]:
         return SortedKeyUserIterator(
