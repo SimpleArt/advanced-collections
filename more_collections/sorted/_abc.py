@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from bisect import bisect_left, bisect_right
 from copy import copy, deepcopy
 from itertools import chain
-from typing import Any, Callable, Generic, Literal, Optional, Protocol, SupportsIndex, Tuple, Type, TypeVar, Union, cast, overload
+from typing import Any, Callable, Generic, Literal, Optional, SupportsIndex, Tuple, Type, TypeVar, Union, cast, overload
 
 if sys.version_info < (3, 9):
     from typing import (
@@ -67,28 +67,7 @@ __all__ = [
 ]
 
 
-class SupportsRichComparison(Protocol):
-
-    def __eq__(self: SupportsRichComparison, other: Any, /) -> bool:
-        ...
-
-    def __ge__(self: SupportsRichComparison, other: Any, /) -> bool:
-        ...
-
-    def __gt__(self: SupportsRichComparison, other: Any, /) -> bool:
-        ...
-
-    def __lt__(self: SupportsRichComparison, other: Any, /) -> bool:
-        ...
-
-    def __le__(self: SupportsRichComparison, other: Any, /) -> bool:
-        ...
-
-    def __ne__(self: SupportsRichComparison, other: Any, /) -> bool:
-        ...
-
-
-Self = TypeVar("Self")
+Self = TypeVar("Self", "SortedIterator", "SortedConstructor", "SortedKeyConstructor", "SortedMapping")
 
 T = TypeVar("T")
 S = TypeVar("S")
@@ -150,6 +129,12 @@ class SortedKeyIterator(Iterator[T], SortedKeyIterable[T], ABC, Generic[T]):
 
 class SortedConstructor(SortedIterable[T], ABC, Generic[T]):
 
+    def __copy__(self: Self, /) -> Self:
+        return type(self).from_sorted(self)
+
+    def __deepcopy__(self: Self, /) -> Self:
+        return type(self).from_sorted(deepcopy(x) for x in self)
+
     def __repr__(self: SortedConstructor[Any], /) -> str:
         if id(self) in reprs_seen:
             return "..."
@@ -160,6 +145,9 @@ class SortedConstructor(SortedIterable[T], ABC, Generic[T]):
             return f"{cls.__name__}.from_iterable([{data}])"
         finally:
             reprs_seen.remove(id(self))
+
+    def copy(self: Self, /) -> Self:
+        return copy(self)
 
     @classmethod
     def from_iterable(cls: Type[SortedConstructor[T]], iterable: Iterable[T], /) -> SortedConstructor[T]:
@@ -176,6 +164,12 @@ class SortedConstructor(SortedIterable[T], ABC, Generic[T]):
 
 class SortedKeyConstructor(SortedKeyIterable[T], ABC, Generic[T]):
 
+    def __copy__(self: Self, /) -> Self:
+        return type(self).from_sorted(self, self.key)
+
+    def __deepcopy__(self: Self, /) -> Self:
+        return type(self).from_sorted((deepcopy(x) for x in self), self.key)
+
     def __repr__(self: SortedKeyConstructor[Any], /) -> str:
         if id(self) in reprs_seen:
             return "..."
@@ -186,6 +180,9 @@ class SortedKeyConstructor(SortedKeyIterable[T], ABC, Generic[T]):
             return f"{cls.__name__}.from_iterable([{data}], key={self.key!r})"
         finally:
             reprs_seen.remove(id(self))
+
+    def copy(self: Self, /) -> Self:
+        return copy(self)
 
     @classmethod
     def from_iterable(cls: Type[SortedKeyConstructor[T]], iterable: Iterable[T], /, key: Callable[[T], Any]) -> SortedKeyConstructor[T]:
@@ -215,12 +212,6 @@ class SortedSequence(Sequence[T], SortedConstructor[T], ABC, Generic[T]):
         i = bisect_left(self, value)
         return 0 <= i < len(self) and not (value is not self[i] != value)
 
-    def __copy__(self: Self, /) -> Self:
-        return type(self).from_sorted(self)
-
-    def __deepcopy__(self: Self, /) -> Self:
-        return type(self).from_sorted(deepcopy(x) for x in self)
-
     @overload
     def __getitem__(self: SortedSequence[T], index: int, /) -> T:
         ...
@@ -244,9 +235,6 @@ class SortedSequence(Sequence[T], SortedConstructor[T], ABC, Generic[T]):
     @abstractmethod
     def __reversed__(self: SortedSequence[T], /) -> Iterator[T]:
         raise NotImplementedError("__reversed__ is a required method for sorted sequences")
-
-    def copy(self: Self, /) -> Self:
-        return copy(self)
 
     def count(self: SortedSequence[Any], value: Any, /) -> int:
         hi = bisect_right(self, value)
@@ -281,12 +269,6 @@ class SortedKeySequence(Sequence[T], SortedKeyConstructor[T], ABC, Generic[T]):
         i = bisect_left(self, value, key=self.key)
         return 0 <= i < len(self) and not (value is not self[i] != value)
 
-    def __copy__(self: Self, /) -> Self:
-        return type(self).from_sorted(self, self.key)
-
-    def __deepcopy__(self: Self, /) -> Self:
-        return type(self).from_sorted((deepcopy(x) for x in self), self.key)
-
     @overload
     def __getitem__(self: SortedKeySequence[T], index: int, /) -> T:
         ...
@@ -310,9 +292,6 @@ class SortedKeySequence(Sequence[T], SortedKeyConstructor[T], ABC, Generic[T]):
     @abstractmethod
     def __reversed__(self: SortedKeySequence[T], /) -> Iterator[T]:
         raise NotImplementedError("__reversed__ is a required method for sorted key sequences")
-
-    def copy(self: Self, /) -> Self:
-        return copy(self)
 
     def count(self: SortedKeySequence[Any], value: Any, /) -> int:
         hi = bisect_right(self, value, key=self.key)
