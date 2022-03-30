@@ -429,8 +429,8 @@ class SortedMapping(Mapping[KT_co, VT_co], SortedIterable[KT_co], Generic[KT_co,
         else:
             raise TypeError(f"from_iterable expects a mapping, got {mapping!r}")
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def from_sorted(cls: Type[SortedMapping[KT_co, VT_co]], mapping: Union[Mapping[KT_co, VT_co], Iterable[tuple[KT_co, VT_co]]], /) -> SortedMapping[KT_co, VT_co]:
         raise NotImplementedError("from_sorted is a required method for sorted mappings")
 
@@ -481,8 +481,8 @@ class SortedMutableMapping(MutableMapping[KT_co, VT_co], SortedMapping[KT_co, VT
         else:
             raise TypeError(f"from_iterable expects a mapping, got {mapping!r}")
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def from_sorted(cls: Type[SortedMutableMapping[KT_co, VT_co]], mapping: Union[Mapping[KT_co, VT_co], Iterable[tuple[KT_co, VT_co]]], /) -> SortedMutableMapping[KT_co, VT_co]:
         raise NotImplementedError("from_sorted is a required method for sorted mutable mappings")
 

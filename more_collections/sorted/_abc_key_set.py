@@ -161,8 +161,8 @@ class SortedKeySet(AbstractSet[T], SortedKeySequence[T], ABC, Generic[T]):
         else:
             return cls.from_sorted(sorted(set(iterable), key=key), key)
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def from_sorted(cls: Type[SortedKeySet[T]], iterable: Iterable[T], /, key: Callable[[T], Any]) -> SortedKeySet[T]:
         raise NotImplementedError("from_sorted is a required method for sorted key sets")
 
@@ -377,8 +377,8 @@ class SortedKeyMutableSet(SortedKeySet[T_co], set[T_co], ABC, Generic[T_co]):
         if len(self._set) != len_:
             self._sequence.remove(value)
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def from_sorted(cls: Type[SortedKeyMutableSet[T_co]], iterable: Iterable[T_co], /, key: Callable[[T_co], Any]) -> SortedKeyMutableSet[T_co]:
         raise NotImplementedError("from_sorted is a required method for sorted key mutable sets")
 

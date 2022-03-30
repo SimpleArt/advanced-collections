@@ -48,7 +48,7 @@ class SortedConstructor(SortedIterable[T], ABC, Generic[T]):
         else:
             raise TypeError(f"from_iterable expects an iterable, got {iterable!r}")
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def from_sorted(cls: Type[SortedConstructor[T]], iterable: Iterable[T], /) -> SortedConstructor[T]:
         raise NotImplementedError("from_sorted is a required method for sorted constructors")
