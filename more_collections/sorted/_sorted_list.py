@@ -51,8 +51,9 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         self._mins = [L[0] for L in self._data]
 
     def __contains__(self: SortedList[Any], value: Any, /) -> bool:
+        if len(self) == 0:
+            return False
         data = self._data
-        lens = self._lens
         mins = self._mins
         if value < mins[0]:
             return False
