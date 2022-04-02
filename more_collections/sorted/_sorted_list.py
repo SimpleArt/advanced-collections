@@ -318,7 +318,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             i = bisect(mins, value, 0, len(mins) - 1)
             L = data[i - 1]
             len2 = len(L) // 2
-            if len2 > chunksize:
+            if len2 > CHUNKSIZE:
                 data.insert(i, L[len2:])
                 mins.insert(i, L[len2])
                 del L[len2:]
