@@ -181,9 +181,16 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         if isinstance(index, slice):
             range_ = range(len(self))[index]
             if range_.step < 0:
-                return type(self).from_sorted(self[i] for i in reversed(range_))
+                range_ = range_[::-1]
+            result = type(self)()
+            result._len = len(range_)
+            if result._len < len(self) // 8:
+                result._data = [[self[i] for i in range_[j : j + CHUNKSIZE]] for j in range(0, len(range_), CHUNKSIZE)]
             else:
-                return type(self).from_sorted(self[i] for i in range_)
+                iterator = islice(self, result.start, result.stop, result.step)
+                result._data = [[*islice(iterator, CHUNKSIZE)] for _ in range(0, len(range_), CHUNKSIZE)]
+            result._mins = [L[0] for L in result._data]
+            return result
         elif not isinstance(index, SupportsIndex):
             raise TypeError(f"index could not be interpreted as an integer or slice, got {index!r}")
         index = operator.index(index)
