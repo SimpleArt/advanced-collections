@@ -20,6 +20,7 @@ from ._sorted_key_iterable import SortedKeyUserIterator
 
 T = TypeVar("T")
 
+CHUNKSIZE = 1024
 reprs_seen: set[int] = {*()}
 
 
@@ -46,7 +47,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         #     data = [0, 1, 2, 3, ...]
         # to a 2D list:
         #     data = [[0, 1], [2, 3], [...], ...]
-        self._data = [data[i : i + chunksize] for i in range(0, len(data), chunksize)]
+        self._data = [data[i : i + CHUNKSIZE] for i in range(0, len(data), CHUNKSIZE)]
         self._mins = [L[0] for L in self._data]
 
     def __delitem__(self: SortedList[T], index: Union[int, slice], /) -> None:
@@ -70,7 +71,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
                 iterator = islice(self, range_.start)
             else:
                 iterator = (x for i, x in enumerate(self) if i not in range_)
-            self._data = [*iter(lambda: [*islice(iterator, chunksize)], [])]
+            self._data = [*iter(lambda: [*islice(iterator, CHUNKSIZE)], [])]
             self._mins = [L[0] for L in self._data]
             return
         elif not isinstance(index, SupportsIndex):
@@ -93,7 +94,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             del data[0][index]
             if index == 0:
                 mins[0] = data[0][0]
-            if len(data) > 1 and len(data[0]) < chunksize // 2:
+            if len(data) > 1 and len(data[0]) < CHUNKSIZE // 2:
                 data[0].extend(data.pop(1))
                 del mins[1]
                 self._lens = None
@@ -115,7 +116,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             del data[-1][index]
             if index == 0:
                 mins[-1] = data[-1][0]
-            if len(data) > 1 and len(data[-1]) < chunksize // 2:
+            if len(data) > 1 and len(data[-1]) < CHUNKSIZE // 2:
                 data[-2].extend(data.pop(-1))
                 del mins[-1]
                 del lens[-1]
@@ -144,7 +145,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         len2 = len(L) // 2
         del L[index]
         self._len -= 1
-        if len(data) < 2 or len2 > chunksize // 4:
+        if len(data) < 2 or len2 > CHUNKSIZE // 4:
             mins[i] = L[0]
             i += 1
             while i < len(lens):
@@ -249,7 +250,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         if value < mins[0]:
             L = data[0]
             len2 = len(L) // 2
-            if len2 > chunksize:
+            if len2 > CHUNKSIZE:
                 data.insert(1, L[len2:])
                 mins.insert(1, L[len2])
                 del L[len2:]
@@ -264,7 +265,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         elif value >= mins[-1]:
             L = data[-1]
             len2 = len(L) // 2
-            if len2 > chunksize:
+            if len2 > CHUNKSIZE:
                 data.append(L[len2:])
                 mins.append(L[len2])
                 del L[len2:]
@@ -362,7 +363,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             return
         del L[j]
         self._len -= 1
-        if len(data) < 2 or len(L) > chunksize // 2:
+        if len(data) < 2 or len(L) > CHUNKSIZE // 2:
             if j == 0:
                 mins[i] = L[0]
             if lens is not None:
