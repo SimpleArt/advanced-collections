@@ -30,7 +30,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
     _lens: Optional[list[int]]
     _mins: list[T]
 
-    __slots__ = ("_data", "_len", "_mins")
+    __slots__ = ("_data", "_len", "_lens", "_mins")
 
     def __init__(self: SortedList[T], iterable: Optional[Iterable[T]] = None, /) -> None:
         data: list[T]
