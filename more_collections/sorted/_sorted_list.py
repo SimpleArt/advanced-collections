@@ -50,6 +50,19 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         self._data = [data[i : i + CHUNKSIZE] for i in range(0, len(data), CHUNKSIZE)]
         self._mins = [L[0] for L in self._data]
 
+    def __contains__(self: SortedList[Any], value: Any, /) -> bool:
+        data = self._data
+        lens = self._lens
+        mins = self._mins
+        if value < mins[0]:
+            return False
+        elif value >= mins[-1]:
+            L = data[-1]
+        else:
+            L = data[bisect(mins, value, 0, len(mins) - 1) - 1]
+        i = bisect(L, value) - 1
+        return 0 <= i < len(L) and not (value is not L[i] != value)
+
     def __delitem__(self: SortedList[T], index: Union[int, slice], /) -> None:
         if isinstance(index, slice):
             range_ = range(len(self))[index]
