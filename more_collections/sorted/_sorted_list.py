@@ -138,14 +138,8 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
                 lens[-1] -= 1
             self._len -= 1
             return
-        elif lens is None:
-            lens = [0]
-            lens.extend(len(L) for L in data)
-            for i in range(1, len(lens)):
-                j = i + (i & -i)
-                if j < len(lens):
-                    lens[j] += lens[i]
-            self._lens = lens
+        self._ensure_lens()
+        lens = self._lens
         i = 0
         j = 2048
         while j < len(lens):
@@ -194,7 +188,6 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             raise TypeError(f"index could not be interpreted as an integer or slice, got {index!r}")
         index = operator.index(index)
         data = self._data
-        lens = self._lens
         mins = self._mins
         if index < 0:
             index += len(self)
@@ -204,14 +197,8 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             return data[0][index]
         elif index >= len(self) - len(data[-1]):
             return data[-1][index - len(self) + len(data[-1])]
-        elif lens is None:
-            lens = [0]
-            lens.extend(len(L) for L in data)
-            for i in range(1, len(lens)):
-                j = i + (i & -i)
-                if j < len(lens):
-                    lens[j] += lens[i]
-            self._lens = lens
+        self._ensure_lens()
+        lens = self._lens
         i = 0
         j = 2048
         len_lens = len(lens)
@@ -251,6 +238,17 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             for L in reversed(self._data)
             for x in reversed(L)
         )
+
+    def _ensure_lens(self: SortedList[Any], /) -> None:
+        lens = self._lens
+        if lens is None:
+            lens = [len(L) for L in self._data]
+            lens.insert(0, 0)
+            for i in range(1, len(lens)):
+                j = i + (i & -i)
+                if j < len(lens):
+                    lens[j] += lens[i]
+            self._lens = lens
 
     def append(self: SortedList[T], value: T, /) -> None:
         if len(self) == 0:
