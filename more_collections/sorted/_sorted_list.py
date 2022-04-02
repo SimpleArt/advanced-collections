@@ -395,6 +395,22 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             del mins[i + 1]
             self._lens = None
 
+    def extend(self: SortedList[T], iterable: Iterable[T], /) -> None:
+        if not isinstance(iterable, Iterable):
+            raise TypeError(f"extend expected an iterable, got {iterable!r}")
+        sorted_data = sorted(iterable)  # type: ignore
+        if len(sorted_data) > len(self) // 8:
+            if len(self) > 0:
+                sorted_data.extend(self)
+                sorted_data.sort()  # type: ignore
+            self._data = [sorted_data[i : i + CHUNKSIZE] for i in range(0, len(sorted_data), CHUNKSIZE)]
+            self._len = len(sorted_data)
+            self._lens = None
+            self._mins = [L[0] for L in self._data]
+        else:
+            for value in sorted_data:
+                self.append(value)
+
     @classmethod
     def from_iterable(cls: Type[SortedList[T]], iterable: Iterable[T], /) -> SortedList[T]:
         if not isinstance(iterable, Iterable):
