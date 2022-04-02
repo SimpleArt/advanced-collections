@@ -21,6 +21,8 @@ reprs_seen: set[int] = {*()}
 
 class SortedConstructor(SortedIterable[T], ABC, Generic[T]):
 
+    __slots__ = ()
+
     def __copy__(self: Self, /) -> Self:
         return type(self).from_sorted(self)  # type: ignore
 

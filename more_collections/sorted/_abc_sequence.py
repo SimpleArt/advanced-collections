@@ -29,6 +29,8 @@ def iter_until(iterable: SortedIterable[T], stop_at: T, /) -> Iterator[T]:
 class SortedInterval(Generic[T]):
     _sequence: SortedSequence[T]
 
+    __slots__ = ("_sequence",)
+
     def __init__(self: SortedInterval[T], sequence: SortedSequence[T], /) -> None:
         if not isinstance(sequence, SortedSequence):
             raise TypeError(f"{type(self).__name__} expected a sorted sequence, got {sequence!r}")
