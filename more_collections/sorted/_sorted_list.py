@@ -114,7 +114,8 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
                 self._lens = None
             elif lens is not None:
                 i = 1
-                while i < len(lens):
+                len_lens = len(lens)
+                while i < len_lens:
                     lens[i] -= 1
                     i *= 2
             self._len -= 1
@@ -144,10 +145,11 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         lens = self._lens
         i = 0
         j = 2048
-        while j < len(lens):
+        len_lens = len(lens)
+        while j < len_lens:
             j *= 2
         while j > 0:
-            if i + j < len(lens) and lens[i + j] <= index:
+            if i + j < len_lens and lens[i + j] <= index:
                 i += j
                 index -= lens[i]
             j //= 2
@@ -159,7 +161,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         if len(data) < 2 or len2 > CHUNKSIZE // 4:
             mins[i] = L[0]
             i += 1
-            while i < len(lens):
+            while i < len_lens:
                 lens[i] -= 1
                 i += i & -i
         elif len(data[i - 1]) < len(data[i + 1]):
@@ -214,8 +216,6 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         len_lens = len(lens)
         while j < len_lens:
             j *= 2
-        while j >= len_lens:
-            j //= 2
         while j > 0:
             if i + j < len_lens and lens[i + j] <= index:
                 i += j
@@ -254,9 +254,10 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         if lens is None:
             lens = [len(L) for L in self._data]
             lens.insert(0, 0)
-            for i in range(1, len(lens)):
+            len_lens = len(lens)
+            for i in range(1, len_lens):
                 j = i + (i & -i)
-                if j < len(lens):
+                if j < len_lens:
                     lens[j] += lens[i]
             self._lens = lens
 
@@ -279,7 +280,8 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
                 self._lens = None
             elif lens is not None:
                 i = 1
-                while i < len(lens):
+                len_lens = len(lens)
+                while i < len_lens:
                     lens[i] += 1
                     i *= 2
             L.insert(0, value)
@@ -345,7 +347,8 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
                 if j == 0:
                     mins[i - 1] = value
                 if lens is not None:
-                    while i < len(lens):
+                    len_lens = len(lens)
+                    while i < len_lens:
                         lens[i] += 1
                         i += i & -i
         self._len += 1
@@ -390,7 +393,8 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
                 mins[i] = L[0]
             if lens is not None:
                 j = i + 1
-                while j < len(lens):
+                len_lens = len(lens)
+                while j < len_lens:
                     lens[j] -= 1
                     j += j & -j
         elif i > 0 and (i == len(data) - 1 or len(data[i - 1]) < len(data[i + 1])):
@@ -563,10 +567,11 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
         lens = self._lens
         i = 0
         j = 2048
-        while j < len(lens):
+        len_lens = len(lens)
+        while j < len_lens:
             j *= 2
         while j > 0:
-            if i + j < len(lens) and lens[i + j] <= index:
+            if i + j < len_lens and lens[i + j] <= index:
                 i += j
                 index -= lens[i]
             j //= 2
@@ -578,7 +583,7 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
         if len(data) < 2 or len2 > CHUNKSIZE // 4:
             mins[i] = key(L[0])
             i += 1
-            while i < len(lens):
+            while i < len_lens:
                 lens[i] -= 1
                 i += i & -i
         elif len(data[i - 1]) < len(data[i + 1]):
@@ -634,8 +639,6 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
         len_lens = len(lens)
         while j < len_lens:
             j *= 2
-        while j >= len_lens:
-            j //= 2
         while j > 0:
             if i + j < len_lens and lens[i + j] <= index:
                 i += j
@@ -674,9 +677,10 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
         if lens is None:
             lens = [len(L) for L in self._data]
             lens.insert(0, 0)
-            for i in range(1, len(lens)):
+            len_lens = len(lens)
+            for i in range(1, len_lens):
                 j = i + (i & -i)
-                if j < len(lens):
+                if j < len_lens:
                     lens[j] += lens[i]
             self._lens = lens
 
@@ -701,7 +705,8 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
                 self._lens = None
             elif lens is not None:
                 i = 1
-                while i < len(lens):
+                len_lens = len(lens)
+                while i < len_lens:
                     lens[i] += 1
                     i *= 2
             L.insert(0, value)
@@ -767,7 +772,8 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
                 if j == 0:
                     mins[i - 1] = kv
                 if lens is not None:
-                    while i < len(lens):
+                    len_lens = len(lens)
+                    while i < len_lens:
                         lens[i] += 1
                         i += i & -i
         self._len += 1
@@ -814,7 +820,8 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
                 mins[i] = key(L[0])
             if lens is not None:
                 j = i + 1
-                while j < len(lens):
+                len_lens = len(lens)
+                while j < len_lens:
                     lens[j] -= 1
                     j += j & -j
         elif i > 0 and (i == len(data) - 1 or len(data[i - 1]) < len(data[i + 1])):
