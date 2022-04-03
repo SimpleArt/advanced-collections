@@ -78,7 +78,6 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
                 return
             if range_.step < 0:
                 range_ = range_[::-1]
-            self._len -= len(range_)
             if range_.step == 1 and range_.start == 0:
                 iterator = islice(self, range_.stop, None)
             elif range_.step == 1 and range_.stop == len(self):
@@ -86,6 +85,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             else:
                 iterator = (x for i, x in enumerate(self) if i not in range_)
             self._data = [*iter(lambda: [*islice(iterator, CHUNKSIZE)], [])]
+            self._len -= len(range_)
             self._mins = [L[0] for L in self._data]
             return
         elif not isinstance(index, SupportsIndex):
@@ -112,7 +112,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
                 data[0].extend(data.pop(1))
                 del mins[1]
                 self._lens = None
-            else:
+            elif lens is not None:
                 i = 1
                 while i < len(lens):
                     lens[i] -= 1
@@ -122,7 +122,8 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         elif index >= len(self) - len(data[-1]):
             if len(data[-1]) == 1:
                 del data[-1]
-                del lens[-1]
+                if lens is not None:
+                    del lens[-1]
                 del mins[-1]
                 self._len -= 1
                 return
@@ -133,8 +134,9 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             if len(data) > 1 and len(data[-1]) < CHUNKSIZE // 2:
                 data[-2].extend(data.pop(-1))
                 del mins[-1]
-                del lens[-1]
-            else:
+                if lens is not None:
+                    del lens[-1]
+            elif lens is not None:
                 lens[-1] -= 1
             self._len -= 1
             return
@@ -149,6 +151,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
                 i += j
                 index -= lens[i]
             j //= 2
+        assert 0 < i < len(data) - 1
         L = data[i]
         len2 = len(L) // 2
         del L[index]
@@ -493,7 +496,6 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
                 return
             if range_.step < 0:
                 range_ = range_[::-1]
-            self._len -= len(range_)
             if range_.step == 1 and range_.start == 0:
                 iterator = islice(self, range_.stop, None)
             elif range_.step == 1 and range_.stop == len(self):
@@ -501,6 +503,7 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
             else:
                 iterator = (x for i, x in enumerate(self) if i not in range_)
             self._data = [*iter(lambda: [*islice(iterator, CHUNKSIZE)], [])]
+            self._len -= len(range_)
             self._mins = [key(L[0]) for L in self._data]
             return
         elif not isinstance(index, SupportsIndex):
@@ -511,7 +514,7 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
         index = operator.index(index)
         if index < 0:
             index += len(self)
-        elif not 0 <= index < len(self):
+        if not 0 <= index < len(self):
             raise IndexError("index out of range")
         elif index < len(data[0]):
             if len(data[0]) == 1:
@@ -527,9 +530,10 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
                 data[0].extend(data.pop(1))
                 del mins[1]
                 self._lens = None
-            else:
+            elif lens is not None:
                 i = 1
-                while i < len(lens):
+                len_lens = len(lens)
+                while i < len_lens:
                     lens[i] -= 1
                     i *= 2
             self._len -= 1
@@ -537,7 +541,8 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
         elif index >= len(self) - len(data[-1]):
             if len(data[-1]) == 1:
                 del data[-1]
-                del lens[-1]
+                if lens is not None:
+                    del lens[-1]
                 del mins[-1]
                 self._len -= 1
                 return
@@ -548,8 +553,9 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
             if len(data) > 1 and len(data[-1]) < CHUNKSIZE // 2:
                 data[-2].extend(data.pop(-1))
                 del mins[-1]
-                del lens[-1]
-            else:
+                if lens is not None:
+                    del lens[-1]
+            elif lens is not None:
                 lens[-1] -= 1
             self._len -= 1
             return
@@ -564,6 +570,7 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
                 i += j
                 index -= lens[i]
             j //= 2
+        assert 0 < i < len(data) - 1
         L = data[i]
         len2 = len(L) // 2
         del L[index]
