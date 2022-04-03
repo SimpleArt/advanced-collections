@@ -30,7 +30,17 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
     _lens: Optional[list[int]]
     _mins: list[T]
 
-    __slots__ = ("_data", "_len", "_lens", "_mins")
+    __slots__ = {
+        "_data":
+            "The data is stored in order as segments.",
+        "_len":
+            "The total length is maintained as an attribute.",
+        "_lens":
+            "The length of each individual segment is stored via a Fenwick tree when needed."
+            " `None` while indexing is not needed or if the Fenwick tree needs to be reconstructed.",
+        "_mins":
+            "The smallest element of each segment is stored separately for fast use with the `bisect` module.",
+    }
 
     def __init__(self: SortedList[T], iterable: Optional[Iterable[T]] = None, /) -> None:
         data: list[T]
@@ -446,7 +456,19 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
     _lens: Optional[list[int]]
     _mins: list[Any]
 
-    __slots__ = ("__key", "_data", "_len", "_lens", "_mins")
+    __slots__ = {
+        "__key":
+            "The key used to compare elements.",
+        "_data":
+            "The data is stored in order as segments.",
+        "_len":
+            "The total length is maintained as an attribute.",
+        "_lens":
+            "The length of each individual segment is stored via a Fenwick tree when needed."
+            " `None` while indexing is not needed or if the Fenwick tree needs to be reconstructed.",
+        "_mins":
+            "The smallest key of each segment is stored separately for fast use with the `bisect` module.",
+    }
 
     def __init__(self: SortedKeyList[T], iterable: Optional[Iterable[T]] = None, /, *, key: Callable[[T], Any]) -> None:
         data: list[T]
