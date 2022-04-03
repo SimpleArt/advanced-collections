@@ -79,12 +79,14 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             if range_.step < 0:
                 range_ = range_[::-1]
             if range_.step == 1 and range_.start == 0:
-                iterator = islice(self, range_.stop, None)
+                data = list(islice(reversed(self), len(self) - len(range_)))
+                self._data = [data[i : i - CHUNKSIZE : -1] for i in range(-1, -len(data), -CHUNKSIZE)]
             elif range_.step == 1 and range_.stop == len(self):
                 iterator = islice(self, range_.start)
+                self._data = [*iter(lambda: [*islice(iterator, CHUNKSIZE)], [])]
             else:
                 iterator = (x for i, x in enumerate(self) if i not in range_)
-            self._data = [*iter(lambda: [*islice(iterator, CHUNKSIZE)], [])]
+                self._data = [*iter(lambda: [*islice(iterator, CHUNKSIZE)], [])]
             self._len -= len(range_)
             self._mins = [L[0] for L in self._data]
             return
@@ -501,12 +503,14 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
             if range_.step < 0:
                 range_ = range_[::-1]
             if range_.step == 1 and range_.start == 0:
-                iterator = islice(self, range_.stop, None)
+                data = list(islice(reversed(self), len(self) - len(range_)))
+                self._data = [data[i : i - CHUNKSIZE : -1] for i in range(-1, -len(data), -CHUNKSIZE)]
             elif range_.step == 1 and range_.stop == len(self):
                 iterator = islice(self, range_.start)
+                self._data = [*iter(lambda: [*islice(iterator, CHUNKSIZE)], [])]
             else:
                 iterator = (x for i, x in enumerate(self) if i not in range_)
-            self._data = [*iter(lambda: [*islice(iterator, CHUNKSIZE)], [])]
+                self._data = [*iter(lambda: [*islice(iterator, CHUNKSIZE)], [])]
             self._len -= len(range_)
             self._mins = [key(L[0]) for L in self._data]
             return
