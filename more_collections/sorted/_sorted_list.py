@@ -94,7 +94,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         lens = self._lens
         mins = self._mins
         index = operator.index(index)
-        elif index < 0:
+        if index < 0:
             index += len(self)
         if not 0 <= index < len(self):
             raise IndexError("index out of range")
