@@ -163,7 +163,7 @@ class SegList(MutableSequence[T], Generic[T]):
                 return type(self)()
             # Entire slice.
             elif len(range_) == len(self):
-                return self.copy()
+                return self.copy() if range_.step > 0 else type(self)(reversed(self))
             # Start from the beginning.
             elif range_.step == 1 and range_.start == 0:
                 return type(self)(islice(self, range_.stop))
