@@ -1,9 +1,8 @@
 from __future__ import annotations
 import collections.abc
-import operator
 import sys
 from itertools import chain, islice
-from typing import Generic, Optional, SupportsIndex, TypeVar, Union, overload
+from typing import Generic, Optional, TypeVar, Union, overload
 
 if sys.version_info < (3, 9):
     from typing import Iterable, Iterator, MutableSequence, List as list, Set as set
@@ -74,16 +73,15 @@ class SegList(MutableSequence[T], Generic[T]):
             self._len -= len(range_)
             self._lens = None
             return
-        elif not isinstance(index, SupportsIndex):
-            raise TypeError(f"index could not be interpreted as an integer or slice, got {index!r}")
+        try:
+            index = range(len(self))[index]
+        except TypeError:
+            raise TypeError(f"indices must be integers or slices, not {type(index).__name__}") from None
+        except IndexError:
+            raise IndexError("index out of range") from None
         data = self._data
         lens = self._lens
-        index = operator.index(index)
-        if index < 0:
-            index += len(self)
-        if not 0 <= index < len(self):
-            raise IndexError("index out of range")
-        elif index < len(data[0]):
+        if index < len(data[0]):
             if len(data[0]) == 1:
                 del data[0]
                 self._lens = None
@@ -192,15 +190,14 @@ class SegList(MutableSequence[T], Generic[T]):
                 return type(self)([x for i, x in enumerate(self) if i in range_])
             else:
                 return type(self)([x for i, x in enumerate(reversed(self), 1 - len(self)) if -i in range_])
-        elif not isinstance(index, SupportsIndex):
-            raise TypeError(f"index could not be interpreted as an integer or slice, got {index!r}")
-        index = operator.index(index)
+        try:
+            index = range(len(self))[index]
+        except TypeError:
+            raise TypeError(f"indices must be integers or slices, not {type(index).__name__}") from None
+        except IndexError:
+            raise IndexError("index out of range") from None
         data = self._data
-        if index < 0:
-            index += len(self)
-        if not 0 <= index < len(self):
-            raise IndexError("index out of range")
-        elif index < len(data[0]):
+        if index < len(data[0]):
             return data[0][index]
         elif index >= len(self) - len(data[-1]):
             return data[-1][index - len(self) + len(data[-1])]
@@ -254,16 +251,15 @@ class SegList(MutableSequence[T], Generic[T]):
 
     def __setitem__(self, index, value, /):
         if isinstance(index, slice):
-            raise NotImplementedError("Seglists currently do not support assignments with slicing")
-        elif not isinstance(index, SupportsIndex):
-            raise TypeError(f"index could not be interpreted as an integer or slice, got {index!r}")
-        index = operator.index(index)
+            raise NotImplementedError("Seglists currently do not support slice assignments")
+        try:
+            index = range(len(self))[index]
+        except TypeError:
+            raise TypeError(f"indices must be integers or slices, not {type(index).__name__}") from None
+        except IndexError:
+            raise IndexError("index out of range") from None
         data = self._data
-        if index < 0:
-            index += len(self)
-        if not 0 <= index < len(self):
-            raise IndexError("index out of range")
-        elif index < len(data[0]):
+        if index < len(data[0]):
             data[0][index] = value
             return
         elif index >= len(self) - len(data[-1]):

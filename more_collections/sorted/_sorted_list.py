@@ -1,10 +1,9 @@
 from __future__ import annotations
-import operator
 import sys
 from bisect import bisect, insort
 from itertools import chain, islice
 from random import Random
-from typing import Any, Generic, Optional, SupportsIndex, Type, TypeVar, Union, overload
+from typing import Any, Generic, Optional, Type, TypeVar, Union, overload
 
 if sys.version_info < (3, 9):
     from typing import Callable, Iterable, Iterator, Sequence, Sized, List as list, Set as set
@@ -100,17 +99,16 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             self._len -= len(range_)
             self._mins = [L[0] for L in self._data]
             return
-        elif not isinstance(index, SupportsIndex):
-            raise TypeError(f"index could not be interpreted as an integer or slice, got {index!r}")
+        try:
+            index = range(len(self))[index]
+        except TypeError:
+            raise TypeError(f"indices must be integers or slices, not {type(index).__name__}") from None
+        except IndexError:
+            raise IndexError("index out of range") from None
         data = self._data
         lens = self._lens
         mins = self._mins
-        index = operator.index(index)
-        if index < 0:
-            index += len(self)
-        if not 0 <= index < len(self):
-            raise IndexError("index out of range")
-        elif index < len(data[0]):
+        if index < len(data[0]):
             if len(data[0]) == 1:
                 del data[0]
                 del mins[0]
@@ -208,16 +206,15 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
                 result._data = [[*islice(iterator, CHUNKSIZE)] for _ in range(0, len(range_), CHUNKSIZE)]
             result._mins = [L[0] for L in result._data]
             return result
-        elif not isinstance(index, SupportsIndex):
-            raise TypeError(f"index could not be interpreted as an integer or slice, got {index!r}")
-        index = operator.index(index)
+        try:
+            index = range(len(self))[index]
+        except TypeError:
+            raise TypeError(f"indices must be integers or slices, not {type(index).__name__}") from None
+        except IndexError:
+            raise IndexError("index out of range") from None
         data = self._data
         mins = self._mins
-        if index < 0:
-            index += len(self)
-        if not 0 <= index < len(self):
-            raise IndexError("index out of range")
-        elif index < len(data[0]):
+        if index < len(data[0]):
             return data[0][index]
         elif index >= len(self) - len(data[-1]):
             return data[-1][index - len(self) + len(data[-1])]
@@ -536,17 +533,16 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
             self._len -= len(range_)
             self._mins = [key(L[0]) for L in self._data]
             return
-        elif not isinstance(index, SupportsIndex):
-            raise TypeError(f"index could not be interpreted as an integer or slice, got {index!r}")
+        try:
+            index = range(len(self))[index]
+        except TypeError:
+            raise TypeError(f"indices must be integers or slices, not {type(index).__name__}") from None
+        except IndexError:
+            raise IndexError("index out of range") from None
         data = self._data
         lens = self._lens
         mins = self._mins
-        index = operator.index(index)
-        if index < 0:
-            index += len(self)
-        if not 0 <= index < len(self):
-            raise IndexError("index out of range")
-        elif index < len(data[0]):
+        if index < len(data[0]):
             if len(data[0]) == 1:
                 del data[0]
                 del mins[0]
@@ -645,16 +641,15 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
                 result._data = [[*islice(iterator, CHUNKSIZE)] for _ in range(0, len(range_), CHUNKSIZE)]
             result._mins = [key(L[0]) for L in result._data]
             return result
-        elif not isinstance(index, SupportsIndex):
-            raise TypeError(f"index could not be interpreted as an integer or slice, got {index!r}")
-        index = operator.index(index)
+        try:
+            index = range(len(self))[index]
+        except TypeError:
+            raise TypeError(f"indices must be integers or slices, not {type(index).__name__}") from None
+        except IndexError:
+            raise IndexError("index out of range") from None
         data = self._data
         mins = self._mins
-        if index < 0:
-            index += len(self)
-        if not 0 <= index < len(self):
-            raise IndexError("index out of range")
-        elif index < len(data[0]):
+        if index < len(data[0]):
             return data[0][index]
         elif index >= len(self) - len(data[-1]):
             return data[-1][index - len(self) + len(data[-1])]
