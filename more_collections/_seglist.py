@@ -49,11 +49,11 @@ class SegList(MutableSequence[T], Generic[T]):
 
     def __delitem__(self: SegList[T], index: Union[int, slice], /) -> None:
         if isinstance(index, slice):
-            range_ = range(len(self))[index]
-            if len(self) == len(range_):
+            range_ = range(self._len)[index]
+            if self._len == len(range_):
                 self.clear()
                 return
-            elif len(self) > 8 * len(range_):
+            elif self._len > 8 * len(range_):
                 if range_.step > 0:
                     range_ = range_[::-1]
                 for i in range_:
@@ -62,9 +62,9 @@ class SegList(MutableSequence[T], Generic[T]):
             if range_.step < 0:
                 range_ = range_[::-1]
             if range_.step == 1 and range_.start == 0:
-                data = list(islice(reversed(self), len(self) - len(range_)))
+                data = list(islice(reversed(self), self._len - len(range_)))
                 self._data = [data[i : i - CHUNKSIZE : -1] for i in range(-1, -len(data), -CHUNKSIZE)]
-            elif range_.step == 1 and range_.stop == len(self):
+            elif range_.step == 1 and range_.stop == self._len:
                 iterator = islice(self, range_.start)
                 self._data = [*iter(lambda: [*islice(iterator, CHUNKSIZE)], [])]
             else:
@@ -74,7 +74,7 @@ class SegList(MutableSequence[T], Generic[T]):
             self._lens = None
             return
         try:
-            index = range(len(self))[index]
+            index = range(self._len)[index]
         except TypeError:
             raise TypeError(f"indices must be integers or slices, not {type(index).__name__}") from None
         except IndexError:
@@ -99,14 +99,14 @@ class SegList(MutableSequence[T], Generic[T]):
                     i *= 2
             self._len -= 1
             return
-        elif index >= len(self) - len(data[-1]):
+        elif index >= self._len - len(data[-1]):
             if len(data[-1]) == 1:
                 del data[-1]
                 if lens is not None:
                     del lens[-1]
                 self._len -= 1
                 return
-            index += len(data[-1]) - len(self)
+            index += len(data[-1]) - self._len
             del data[-1][index]
             if len(data) > 1 and len(data[-1]) < CHUNKSIZE // 2:
                 data[-2].extend(data.pop(-1))
@@ -155,25 +155,25 @@ class SegList(MutableSequence[T], Generic[T]):
 
     def __getitem__(self, index, /):
         if isinstance(index, slice):
-            range_ = range(len(self))[index]
+            range_ = range(self._len)[index]
             # Empty slice.
             if len(range_) == 0:
                 return type(self)()
             # Entire slice.
-            elif len(range_) == len(self):
+            elif len(range_) == self._len:
                 return self.copy() if range_.step > 0 else type(self)(reversed(self))
             # Start from the beginning.
             elif range_.step == 1 and range_.start == 0:
                 return type(self)(islice(self, range_.stop))
             # Start from the end and reverse it.
-            elif range_.step == 1 and range_.stop == len(self):
+            elif range_.step == 1 and range_.stop == self._len:
                 result = type(self)()
                 result._len = len(range_)
                 data = list(islice(reversed(self), result._len))
                 result._data = [data[i : i - CHUNKSIZE : -1] for i in range(-1, -result._len, -CHUNKSIZE)]
                 return result
             # Start from the end.
-            elif range_.step == -1 and range_.start == len(self) - 1:
+            elif range_.step == -1 and range_.start == self._len - 1:
                 return type(self)(islice(reversed(self), len(range_)))
             # Start from the beginning and reverse it.
             elif range_.step == -1 and range_.stop == -1:
@@ -183,15 +183,15 @@ class SegList(MutableSequence[T], Generic[T]):
                 result._data = [data[i : i - CHUNKSIZE : -1] for i in range(-1, -result._len, -CHUNKSIZE)]
                 return result
             # Use random access indexing if it's small.
-            elif len(self) > 8 * len(range_):
+            elif self._len > 8 * len(range_):
                 return type(self)([self[i] for i in range_])
             # Loop forward and check if the index matches if it's a lot.
             elif range_.step > 0:
                 return type(self)([x for i, x in enumerate(self) if i in range_])
             else:
-                return type(self)([x for i, x in enumerate(reversed(self), 1 - len(self)) if -i in range_])
+                return type(self)([x for i, x in enumerate(reversed(self), 1 - self._len) if -i in range_])
         try:
-            index = range(len(self))[index]
+            index = range(self._len)[index]
         except TypeError:
             raise TypeError(f"indices must be integers or slices, not {type(index).__name__}") from None
         except IndexError:
@@ -199,8 +199,8 @@ class SegList(MutableSequence[T], Generic[T]):
         data = self._data
         if index < len(data[0]):
             return data[0][index]
-        elif index >= len(self) - len(data[-1]):
-            return data[-1][index - len(self) + len(data[-1])]
+        elif index >= self._len - len(data[-1]):
+            return data[-1][index - self._len + len(data[-1])]
         self._ensure_lens()
         lens = self._lens
         i = 0
@@ -226,7 +226,7 @@ class SegList(MutableSequence[T], Generic[T]):
             return "..."
         reprs_seen.add(id(self))
         try:
-            if len(self) == 0:
+            if self._len == 0:
                 return f"{type(self).__name__}()"
             else:
                 data = ", ".join([repr(x) for x in self])
@@ -253,7 +253,7 @@ class SegList(MutableSequence[T], Generic[T]):
         if isinstance(index, slice):
             raise NotImplementedError("Seglists currently do not support slice assignments")
         try:
-            index = range(len(self))[index]
+            index = range(self._len)[index]
         except TypeError:
             raise TypeError(f"indices must be integers or slices, not {type(index).__name__}") from None
         except IndexError:
@@ -262,8 +262,8 @@ class SegList(MutableSequence[T], Generic[T]):
         if index < len(data[0]):
             data[0][index] = value
             return
-        elif index >= len(self) - len(data[-1]):
-            data[-1][index - len(self) + len(data[-1])] = value
+        elif index >= self._len - len(data[-1]):
+            data[-1][index - self._len + len(data[-1])] = value
             return
         self._ensure_lens()
         lens = self._lens
@@ -294,7 +294,7 @@ class SegList(MutableSequence[T], Generic[T]):
     def append(self: SegList[T], value: T, /) -> None:
         data = self._data
         lens = self._lens
-        if len(self) == 0:
+        if self._len == 0:
             self._data.append([value])
             self._len = 1
             self._lens = None
@@ -330,7 +330,7 @@ class SegList(MutableSequence[T], Generic[T]):
         data = self._data
         self._lens = None
         if type(iterable) is type([]):
-            if len(self) == 0:
+            if self._len == 0:
                 self._data = [iterable[i : i + CHUNKSIZE] for i in range(0, len(iterable), CHUNKSIZE)]
             else:
                 remainder = CHUNKSIZE - len(data[-1])
@@ -339,7 +339,7 @@ class SegList(MutableSequence[T], Generic[T]):
             self._len += len(iterable)
         else:
             iterator = iter(iterable)
-            if len(self) == 0:
+            if self._len == 0:
                 self._data = [*iter(lambda: [*islice(iterator, CHUNKSIZE)], [])]
                 if len(self._data) != 0:
                     self._len = CHUNKSIZE * (len(self._data) - 1) + len(self._data[-1])
@@ -356,13 +356,13 @@ class SegList(MutableSequence[T], Generic[T]):
         if not isinstance(index, SupportsIndex):
             raise TypeError(f"index could not be interpreted as an integer, got {index!r}")
         index = operator.index(index)
-        if len(self) == 0:
+        if self._len == 0:
             self._data.append([value])
             self._len = 1
             self._lens = None
             return
         if index < 0:
-            index += len(self)
+            index += self._len
         data = self._data
         lens = self._lens
         if index <= len(data[0]):
@@ -384,8 +384,8 @@ class SegList(MutableSequence[T], Generic[T]):
                     while i < len_lens:
                         lens[i] += 1
                         i *= 2
-        elif index >= len(self) - len(data[-1]):
-            index += len(data[-1]) - len(self)
+        elif index >= self._len - len(data[-1]):
+            index += len(data[-1]) - self._len
             L = data[-1]
             len2 = len(L) // 2
             if len2 > CHUNKSIZE:

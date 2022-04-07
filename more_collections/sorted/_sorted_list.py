@@ -60,7 +60,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         self._mins = [L[0] for L in self._data]
 
     def __contains__(self: SortedList[Any], value: Any, /) -> bool:
-        if len(self) == 0:
+        if self._len == 0:
             return False
         data = self._data
         mins = self._mins
@@ -75,11 +75,11 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
 
     def __delitem__(self: SortedList[T], index: Union[int, slice], /) -> None:
         if isinstance(index, slice):
-            range_ = range(len(self))[index]
-            if len(self) == len(range_):
+            range_ = range(self._len)[index]
+            if self._len == len(range_):
                 self.clear()
                 return
-            elif len(self) > 8 * len(range_):
+            elif self._len > 8 * len(range_):
                 if range_.step > 0:
                     range_ = range_[::-1]
                 for i in range_:
@@ -88,9 +88,9 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             if range_.step < 0:
                 range_ = range_[::-1]
             if range_.step == 1 and range_.start == 0:
-                data = list(islice(reversed(self), len(self) - len(range_)))
+                data = list(islice(reversed(self), self._len - len(range_)))
                 self._data = [data[i : i - CHUNKSIZE : -1] for i in range(-1, -len(data), -CHUNKSIZE)]
-            elif range_.step == 1 and range_.stop == len(self):
+            elif range_.step == 1 and range_.stop == self._len:
                 iterator = islice(self, range_.start)
                 self._data = [*iter(lambda: [*islice(iterator, CHUNKSIZE)], [])]
             else:
@@ -100,7 +100,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             self._mins = [L[0] for L in self._data]
             return
         try:
-            index = range(len(self))[index]
+            index = range(self._len)[index]
         except TypeError:
             raise TypeError(f"indices must be integers or slices, not {type(index).__name__}") from None
         except IndexError:
@@ -130,7 +130,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
                     i *= 2
             self._len -= 1
             return
-        elif index >= len(self) - len(data[-1]):
+        elif index >= self._len - len(data[-1]):
             if len(data[-1]) == 1:
                 del data[-1]
                 if lens is not None:
@@ -138,7 +138,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
                 del mins[-1]
                 self._len -= 1
                 return
-            index += len(data[-1]) - len(self)
+            index += len(data[-1]) - self._len
             del data[-1][index]
             if index == 0:
                 mins[-1] = data[-1][0]
@@ -194,12 +194,12 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
 
     def __getitem__(self, index, /):
         if isinstance(index, slice):
-            range_ = range(len(self))[index]
+            range_ = range(self._len)[index]
             if range_.step < 0:
                 range_ = range_[::-1]
             result = type(self)()
             result._len = len(range_)
-            if result._len < len(self) // 8:
+            if result._len < self._len // 8:
                 result._data = [[self[i] for i in range_[j : j + CHUNKSIZE]] for j in range(0, len(range_), CHUNKSIZE)]
             else:
                 iterator = islice(self, result.start, result.stop, result.step)
@@ -207,7 +207,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             result._mins = [L[0] for L in result._data]
             return result
         try:
-            index = range(len(self))[index]
+            index = range(self._len)[index]
         except TypeError:
             raise TypeError(f"indices must be integers or slices, not {type(index).__name__}") from None
         except IndexError:
@@ -216,8 +216,8 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         mins = self._mins
         if index < len(data[0]):
             return data[0][index]
-        elif index >= len(self) - len(data[-1]):
-            return data[-1][index - len(self) + len(data[-1])]
+        elif index >= self._len - len(data[-1]):
+            return data[-1][index - self._len + len(data[-1])]
         self._ensure_lens()
         lens = self._lens
         i = 0
@@ -243,7 +243,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             return "..."
         reprs_seen.add(id(self))
         try:
-            if len(self) == 0:
+            if self._len == 0:
                 return f"{type(self).__name__}()"
             else:
                 data = ", ".join([repr(x) for x in self])
@@ -271,7 +271,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             self._lens = lens
 
     def append(self: SortedList[T], value: T, /) -> None:
-        if len(self) == 0:
+        if self._len == 0:
             self._data.append([value])
             self._mins.append(value)
             self._len = 1
@@ -369,7 +369,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         self._mins.clear()
 
     def discard(self: SortedList[T], value: T, /) -> None:
-        if len(self) == 0:
+        if self._len == 0:
             return
         data = self._data
         lens = self._lens
@@ -421,8 +421,8 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         if not isinstance(iterable, Iterable):
             raise TypeError(f"extend expected an iterable, got {iterable!r}")
         sorted_data = sorted(iterable)  # type: ignore
-        if len(sorted_data) > len(self) // 8:
-            if len(self) > 0:
+        if len(sorted_data) > self._len // 8:
+            if self._len > 0:
                 sorted_data.extend(self)
                 sorted_data.sort()  # type: ignore
             self._data = [sorted_data[i : i + CHUNKSIZE] for i in range(0, len(sorted_data), CHUNKSIZE)]
@@ -491,7 +491,7 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
         self.__key = key  # type: ignore
 
     def __contains__(self: SortedKeyList[Any], value: Any, /) -> bool:
-        if len(self) == 0:
+        if self._len == 0:
             return False
         data = self._data
         mins = self._mins
@@ -509,11 +509,11 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
     def __delitem__(self: SortedKeyList[T], index: Union[int, slice], /) -> None:
         key = self.__key
         if isinstance(index, slice):
-            range_ = range(len(self))[index]
-            if len(self) == len(range_):
+            range_ = range(self._len)[index]
+            if self._len == len(range_):
                 self.clear()
                 return
-            elif len(self) > 8 * len(range_):
+            elif self._len > 8 * len(range_):
                 if range_.step > 0:
                     range_ = range_[::-1]
                 for i in range_:
@@ -522,9 +522,9 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
             if range_.step < 0:
                 range_ = range_[::-1]
             if range_.step == 1 and range_.start == 0:
-                data = list(islice(reversed(self), len(self) - len(range_)))
+                data = list(islice(reversed(self), self._len - len(range_)))
                 self._data = [data[i : i - CHUNKSIZE : -1] for i in range(-1, -len(data), -CHUNKSIZE)]
-            elif range_.step == 1 and range_.stop == len(self):
+            elif range_.step == 1 and range_.stop == self._len:
                 iterator = islice(self, range_.start)
                 self._data = [*iter(lambda: [*islice(iterator, CHUNKSIZE)], [])]
             else:
@@ -534,7 +534,7 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
             self._mins = [key(L[0]) for L in self._data]
             return
         try:
-            index = range(len(self))[index]
+            index = range(self._len)[index]
         except TypeError:
             raise TypeError(f"indices must be integers or slices, not {type(index).__name__}") from None
         except IndexError:
@@ -564,7 +564,7 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
                     i *= 2
             self._len -= 1
             return
-        elif index >= len(self) - len(data[-1]):
+        elif index >= self._len - len(data[-1]):
             if len(data[-1]) == 1:
                 del data[-1]
                 if lens is not None:
@@ -572,7 +572,7 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
                 del mins[-1]
                 self._len -= 1
                 return
-            index += len(data[-1]) - len(self)
+            index += len(data[-1]) - self._len
             del data[-1][index]
             if index == 0:
                 mins[-1] = key(data[-1][0])
@@ -629,12 +629,12 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
     def __getitem__(self, index, /):
         key = self.__key
         if isinstance(index, slice):
-            range_ = range(len(self))[index]
+            range_ = range(self._len)[index]
             if range_.step < 0:
                 range_ = range_[::-1]
             result = type(self)(key=key)
             result._len = len(range_)
-            if result._len < len(self) // 8:
+            if result._len < self._len // 8:
                 result._data = [[self[i] for i in range_[j : j + CHUNKSIZE]] for j in range(0, len(range_), CHUNKSIZE)]
             else:
                 iterator = islice(self, result.start, result.stop, result.step)
@@ -642,7 +642,7 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
             result._mins = [key(L[0]) for L in result._data]
             return result
         try:
-            index = range(len(self))[index]
+            index = range(self._len)[index]
         except TypeError:
             raise TypeError(f"indices must be integers or slices, not {type(index).__name__}") from None
         except IndexError:
@@ -651,8 +651,8 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
         mins = self._mins
         if index < len(data[0]):
             return data[0][index]
-        elif index >= len(self) - len(data[-1]):
-            return data[-1][index - len(self) + len(data[-1])]
+        elif index >= self._len - len(data[-1]):
+            return data[-1][index - self._len + len(data[-1])]
         self._ensure_lens()
         lens = self._lens
         i = 0
@@ -678,7 +678,7 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
             return "..."
         reprs_seen.add(id(self))
         try:
-            if len(self) == 0:
+            if self._len == 0:
                 return f"{type(self).__name__}(key={self.key!r})"
             else:
                 data = ", ".join([repr(x) for x in self])
@@ -711,7 +711,7 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
         mins = self._mins
         key = self.__key
         kv = key(value)
-        if len(self) == 0:
+        if self._len == 0:
             self._data.append([value])
             self._mins.append(kv)
             self._len = 1
@@ -806,7 +806,7 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
         self._mins.clear()
 
     def discard(self: SortedKeyList[T], value: T, /) -> None:
-        if len(self) == 0:
+        if self._len == 0:
             return
         data = self._data
         lens = self._lens
@@ -861,8 +861,8 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
             raise TypeError(f"extend expected an iterable, got {iterable!r}")
         key = self.__key
         sorted_data = sorted(iterable, key=key)  # type: ignore
-        if len(sorted_data) > len(self) // 8:
-            if len(self) > 0:
+        if len(sorted_data) > self._len // 8:
+            if self._len > 0:
                 sorted_data.extend(self)
                 sorted_data.sort(key=key)  # type: ignore
             self._data = [sorted_data[i : i + CHUNKSIZE] for i in range(0, len(sorted_data), CHUNKSIZE)]
