@@ -56,7 +56,7 @@ class SortedMappingView(MappingView, Generic[KT_co, VT_co]):
 class SortedItemsView(SortedMappingView[KT_co, VT_co], SortedSet[tuple[KT_co, VT_co]], ItemsView[KT_co, VT_co], Generic[KT_co, VT_co]):
     __sequence: Optional[SortedSequence[tuple[KT_co, VT_co]]]
 
-    __slots__ = ("__sequence",)
+    __slots__ = ("__sequence", "__set")
 
     def __init__(self: SortedItemsView[KT_co, VT_co], mapping: SortedMapping[KT_co, VT_co], /) -> None:
         if not isinstance(mapping, SortedMapping):
