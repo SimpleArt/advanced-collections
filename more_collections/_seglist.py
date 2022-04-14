@@ -13,7 +13,7 @@ T = TypeVar("T")
 
 reprs_seen: set[int] = {*()}
 
-CHUNKSIZE = 1024
+CHUNKSIZE: int = 1024
 
 
 class SegList(MutableSequence[T], Generic[T]):
@@ -83,9 +83,7 @@ class SegList(MutableSequence[T], Generic[T]):
         lens = self._lens
         if index < len(data[0]):
             if len(data[0]) == 1:
-                del data[0]
-                self._lens = None
-                self._len -= 1
+                self.clear()
                 return
             del data[0][index]
             if len(data) > 1 and len(data[0]) < CHUNKSIZE // 2:
@@ -133,7 +131,7 @@ class SegList(MutableSequence[T], Generic[T]):
         len2 = len(L) // 2
         del L[index]
         self._len -= 1
-        if len(data) < 2 or len2 > CHUNKSIZE // 4:
+        if len2 > CHUNKSIZE // 4:
             i += 1
             while i < len_lens:
                 lens[i] -= 1
