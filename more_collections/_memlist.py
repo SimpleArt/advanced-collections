@@ -1,10 +1,12 @@
 from __future__ import annotations
 import collections.abc
+import operator
 import pickle
 import sys
 from itertools import chain, islice
 from pathlib import Path
-from typing import Any, ClassVar, Generic, Optional, TypeVar, Union, overload
+from types import TracebackType
+from typing import Any, ClassVar, Generic, Optional, SupportsIndex, Type, TypeVar, Union, overload
 
 if sys.version_info < (3, 9):
     from typing import Iterable, Iterator, MutableSequence, List as list, Set as set
@@ -13,16 +15,21 @@ else:
 
 __all__ = ["MemList"]
 
+ET = TypeVar("ET", bound=BaseException)
 T = TypeVar("T")
 
 reprs_seen: set[int] = {*()}
 
-CHUNKSIZE: int = 1 << 16
+CHUNKSIZE: int = 1 << 14
 
 FOLDER = Path.home() / "_more_collections"
 FOLDER.mkdir(exist_ok=True)
 FOLDER /= "_mem_list"
 FOLDER.mkdir(exist_ok=True)
+(FOLDER / "_counter.txt").touch()
+(FOLDER / "_counter.txt").write_text("0")
+(FOLDER / "_metadata.txt").touch()
+(FOLDER / "_metadata.txt").write_text("MemList")
 
 
 class MemList(MutableSequence[T], Generic[T]):
@@ -30,9 +37,9 @@ class MemList(MutableSequence[T], Generic[T]):
     _fenwick: Optional[list[int]]
     _file: Optional[str]
     _filenames: list[str]
+    _folder: Optional[Path]
     _len: int
     _lens: list[int]
-    _uid_counter: ClassVar[int] = 0
 
     __slots__ = {
         "_cache":
@@ -46,17 +53,14 @@ class MemList(MutableSequence[T], Generic[T]):
             "The currently cached file.",
         "_filenames":
             "The file names for each segment.",
+        "_folder":
+            "The folder storing all of the data.",
         "_len":
             "The total length is maintained as an attribute.",
         "_lens":
             "The length of each file's list is tracked so that"
             " the file does not need to be read for indexing.",
     }
-
-    @classmethod
-    def _get_filename(cls: Type[MemList[Any]], /) -> str:
-        cls._uid_counter += 1
-        return f"{cls._uid_counter}.txt"
 
     def __init__(self: MemList[T], iterable: Optional[Iterable[T]] = None, /) -> None:
         if iterable is not None and not isinstance(iterable, Iterable):
@@ -65,13 +69,14 @@ class MemList(MutableSequence[T], Generic[T]):
         self._fenwick = None
         self._file = None
         self._filenames = []
+        self._folder = None
         self._lens = []
         cls = type(self)
         if iterable is not None:
             iterator = iter(iterable)
             for chunk in iter(lambda: [*islice(iterator, CHUNKSIZE)], []):
-                self._filenames.append(cls._get_filename())
-                with open(FOLDER / self._filenames[-1], mode="wb") as file:
+                self._filenames.append(self._get_filename())
+                with open((FOLDER if self._folder is None else self._folder) / self._filenames[-1], mode="wb") as file:
                     pickle.dump(chunk, file)
                 self._lens.append(len(chunk))
         if len(self._lens) == 0:
@@ -80,9 +85,10 @@ class MemList(MutableSequence[T], Generic[T]):
             self._len = CHUNKSIZE * (len(self._lens) - 1) + self._lens[-1]
 
     def __del__(self: MemList[Any], /) -> None:
-        self.clear()
+        if self._folder is FOLDER:
+            self.clear()
 
-    def __delitem__(self: MemList[T], index: Union[int, slice], /) -> None:
+    def __delitem__(self: MemList[Any], index: Union[int, slice], /) -> None:
         if isinstance(index, slice):
             len_ = self._len
             range_ = range(len_)[index]
@@ -93,12 +99,12 @@ class MemList(MutableSequence[T], Generic[T]):
                 self.clear()
                 return
             elif range_.step == 1 and range_.start == 0:
-                for i in range(len(self._lens)):
-                    if size < self._lens[i]:
+                for _ in range(len(self._lens)):
+                    if size < self._lens[0]:
                         break
                     else:
-                        size -= self._lens[i]
-                        self._del_chunk(i)
+                        size -= self._lens[0]
+                        self._del_chunk(0)
                 if size == 0:
                     pass
                 elif self._file == self._filenames[0]:
@@ -108,16 +114,17 @@ class MemList(MutableSequence[T], Generic[T]):
                 elif len(self._lens) == 1 or self._lens[0] - size > CHUNKSIZE // 2:
                     del self._cache_chunk(0)[:size]
                 else:
-                    data = self._pop_chunk(1)[:-size]
-                    self._cache_chunk(0).extend(data)
+                    data = self._pop_chunk(1)
+                    del self._cache_chunk(0)[:size]
+                    self._cache.extend(data)
                 self._lens[0] = len(self._cache)
             elif range_.step == 1 and range_.stop == self._len:
-                for i in reversed(range(len(self._lens))):
-                    if size < self._lens[i]:
+                for _ in reversed(range(len(self._lens))):
+                    if size < self._lens[-1]:
                         break
                     else:
-                        size -= self._lens[i]
-                        self._del_chunk(i)
+                        size -= self._lens[-1]
+                        self._del_chunk(-1)
                 if size == 0:
                     pass
                 elif self._file == self._filenames[-1]:
@@ -138,6 +145,7 @@ class MemList(MutableSequence[T], Generic[T]):
                 return
             self._fenwick = None
             self._len = len_ - len(range_)
+            return
         try:
             index = range(self._len)[index]
         except TypeError:
@@ -153,28 +161,34 @@ class MemList(MutableSequence[T], Generic[T]):
             if len(self._lens) > 1 and len(self._cache) < CHUNKSIZE // 2:
                 self._cache.extend(self._pop_chunk(1))
             self._lens[0] = len(self._cache)
-            return
         elif index >= self._len - self._lens[-1]:
             if self._lens[-1] == 1:
                 self._del_chunk(-1)
                 return
-            del self._cache_chunk(-1)[index - self._len + self._lens[-1]]
+            index += self._lens[-1] - self._len
+            del self._cache_chunk(-1)[index]
             self._fenwick_update(-1, -1)
-            return
-        i, j = self._fenwick_index(index)
-        if self._lens > CHUNKSIZE // 2:
-            del self._cache_chunk(i)[j]
-            self._update_fenwick(i, -1)
-            self._lens[i] = len(self._cache)
-        elif self._lens[i - 1] < self._lens[i + 1]:
-            cache = self._pop_chunk(i)
-            self._cache_chunk(i - 1).extend(cache)
-            self._lens[i - 1] = len(self._cache)
+            if len(self._lens) > 1 and self._lens[-1] < CHUNKSIZE // 2:
+                cache = self._pop_chunk(-1)
+                self._cache_chunk(-1).extend(cache)
+                self._fenwick_update(-1, len(cache))
         else:
-            cache = self._pop_chunk(i + 1)
-            self._cache_chunk(i).extend(cache)
-            self._lens[i] = len(self._cache)
-        self._len -= 1
+            i, j = self._fenwick_index(index)
+            if self._lens > CHUNKSIZE // 2:
+                del self._cache_chunk(i)[j]
+                self._update_fenwick(i, -1)
+            elif self._lens[i - 1] < self._lens[i + 1]:
+                cache = self._pop_chunk(i)
+                del cache[j]
+                self._cache_chunk(i - 1).extend(cache)
+                self._lens[i - 1] = len(self._cache)
+                self._len -= 1
+            else:
+                cache = self._pop_chunk(i + 1)
+                del self._cache_chunk(i)[j]
+                self._cache.extend(cache)
+                self._lens[i] = len(self._cache)
+                self._len -= 1
 
     @overload
     def __getitem__(self: MemList[T], index: int, /) -> T:
@@ -196,7 +210,7 @@ class MemList(MutableSequence[T], Generic[T]):
             # Start from the beginning.
             elif range_.step == 1 and range_.start == 0:
                 return type(self)(islice(self, range_.stop))
-            # Start from the end and reverse it.
+            # Start from the middle.
             elif range_.step == 1 and range_.stop == self._len:
                 i, j = self._fenwick_index(range_.start)
                 return type(self)(chain.from_iterable(chain(
@@ -206,7 +220,7 @@ class MemList(MutableSequence[T], Generic[T]):
             # Start from the end.
             elif range_.step == -1 and range_.start == self._len - 1:
                 return type(self)(islice(reversed(self), len(range_)))
-            # Start from the beginning and reverse it.
+            # Start from the middle.
             elif range_.step == -1 and range_.stop == -1:
                 i, j = self._fenwick_index(range_.start)
                 return type(self)(chain.from_iterable(chain(
@@ -243,6 +257,9 @@ class MemList(MutableSequence[T], Generic[T]):
 
     def __len__(self: MemList[Any], /) -> int:
         return self._len
+
+    def __repr__(self: MemList[Any], /) -> str:
+        return object.__repr__(self)
 
     def __reversed__(self: MemList[T], /) -> Iterator[T]:
         return chain.from_iterable(
@@ -287,12 +304,12 @@ class MemList(MutableSequence[T], Generic[T]):
 
     def _commit_chunk(self: MemList[Any], /) -> None:
         if self._file is not None:
-            with open(FOLDER / self._file, mode="wb") as file:
+            with open((FOLDER if self._folder is None else self._folder) / self._file, mode="wb") as file:
                 pickle.dump(self._cache, file)
 
     def _del_chunk(self: MemList[Any], index: int, /) -> None:
         index = range(len(self._filenames))[index]
-        (FOLDER / self._filenames[index]).unlink()
+        ((FOLDER if self._folder is None else self._folder) / self._filenames[index]).unlink()
         if self._file == self._filenames.pop(index):
             self._cache = None
             self._file = None
@@ -330,6 +347,7 @@ class MemList(MutableSequence[T], Generic[T]):
     def _fenwick_update(self: MemList[Any], index: int, value: int, /) -> None:
         index = range(self._len)[index] + 1
         self._len += value
+        self._lens[index - 1] += value
         if self._fenwick is None:
             return
         elif index & (index - 1) == 0:
@@ -343,10 +361,17 @@ class MemList(MutableSequence[T], Generic[T]):
                 self._fenwick[index] += value
                 index += index & -index
 
+    def _get_filename(self: MemList[Any], /) -> str:
+        file = FOLDER if self._folder is None else self._folder
+        file /= "_counter.txt"
+        uid = int((file).read_text())
+        file.write_text(str(uid + 1))
+        return f"{uid}.txt"
+
     def _load_chunk(self: MemList[T], index: int, /) -> list[T]:
         if self._file == self._filenames[index]:
             return self._cache
-        with open(FOLDER / self._filenames[index], mode="rb") as file:
+        with open((FOLDER if self._folder is None else self._folder) / self._filenames[index], mode="rb") as file:
             return pickle.load(file)
 
     def _pop_chunk(self: MemList[T], index: int, /) -> list[T]:
@@ -355,8 +380,14 @@ class MemList(MutableSequence[T], Generic[T]):
         return data
 
     def clear(self: MemList[Any], /) -> None:
+        folder = FOLDER if self._folder is None else self._folder
         for filename in self._filenames:
-            (FOLDER / filename).unlink()
+            (folder / filename).unlink()
+        if self._folder is not None:
+            (folder / "_counter.txt").unlink()
+            (folder / "_filenames.txt").unlink()
+            (folder / "_lens.txt").unlink()
+            (folder / "_metadata.txt").unlink()
         self._cache = None
         self._fenwick = None
         self._file = None
@@ -371,18 +402,17 @@ class MemList(MutableSequence[T], Generic[T]):
         if self._len == 0:
             self._cache = [value]
             self._fenwick = None
-            self._file = type(self)._get_filename()
+            self._file = self._get_filename()
             self._filenames.append(self._file)
             self._len = 1
             self._lens.append(1)
-            self._commit_chunk()
             return
         elif index < 0:
             index += self._len
         if index <= self._lens[0]:
             if self._lens[0] > 2 * CHUNKSIZE:
                 self._fenwick = None
-                self._filenames.insert(1, type(self)._get_filename())
+                self._filenames.insert(1, self._get_filename())
                 data = self._cache_chunk(0)[self._lens[0] // 2:]
                 del self._cache[self._lens[0] // 2:]
                 if index <= self._lens[0] // 2:
@@ -394,25 +424,26 @@ class MemList(MutableSequence[T], Generic[T]):
                 self._commit_chunk()
                 self._cache = data
                 self._file = self._filenames[1]
+                self._len += 1
             else:
                 self._cache_chunk(0).insert(index, value)
                 self._fenwick_update(0, 1)
         elif index >= self._len - self._lens[-1]:
             index += self._lens[-1] - self._len
             if self._lens[-1] > 2 * CHUNKSIZE:
-                self._fenwick_update(-1, self._lens[-1] // 2 - self._lens[-1])
-                self._filenames.append(type(self)._get_filename())
                 data = self._cache_chunk(-1)[self._lens[-1] // 2:]
                 del self._cache[self._lens[-1] // 2:]
                 if index <= self._lens[-1] // 2:
                     self._cache.insert(index, value)
                 else:
                     data.insert(index - self._lens[-1] // 2, value)
+                self._len += 1
                 self._lens[-1] = len(self._cache)
-                self._lens.append(len(data))
                 self._commit_chunk()
                 self._cache = data
-                self._file = self._filenames[-1]
+                self._file = self._get_filename()
+                self._filenames.append(self._file)
+                self._lens.append(len(data))
                 if self._fenwick is not None:
                     i = len(self._fenwick)
                     j = i & -i
@@ -427,7 +458,7 @@ class MemList(MutableSequence[T], Generic[T]):
         else:
             i, j = self._fenwick_index(index)
             if self._lens[i] > 2 * CHUNKSIZE:
-                self._filenames.insert(i + 1, type(self)._get_filename())
+                self._filenames.insert(i + 1, self._get_filename())
                 data = self._cache_chunk(i)[self._lens[i] // 2:]
                 del self._cache[self._lens[i] // 2:]
                 if index <= self._lens[i]:
@@ -439,7 +470,70 @@ class MemList(MutableSequence[T], Generic[T]):
                 self._commit_chunk()
                 self._cache = data
                 self._file = self._filenames[i + 1]
-        self._len += 1
+                self._len += 1
+            else:
+                self._cache_chunk(i).insert(j, value)
+                self._fenwick_update(i, 1)
+
+    @classmethod
+    def open(cls: Type[MemList[Any]], directory: Union[Path, str], /) -> MemListProxy:
+        return MemListProxy(Path(directory))
+
+
+class MemListProxy:
+    _mem_list: MemList[Any]
+
+    __slots__ = {"_mem_list": "The mem list used."}
+
+    def __init__(self: MemListProxy, folder: Path, /) -> None:
+        self._mem_list = MemList()
+        self._mem_list._folder = folder
+        if not self._mem_list._folder.exists():
+            self._mem_list._folder.mkdir()
+        elif not self._mem_list._folder.is_dir():
+            raise ValueError("a directory must be given")
+        if not (self._mem_list._folder / "_counter.txt").exists():
+            (self._mem_list._folder / "_counter.txt").touch()
+            (self._mem_list._folder / "_counter.txt").write_text("0")
+            (self._mem_list._folder / "_filenames.txt").touch()
+            with open((self._mem_list._folder / "_filenames.txt"), mode="wb") as file:
+                pickle.dump([], file)
+            (self._mem_list._folder / "_lens.txt").touch()
+            with open((self._mem_list._folder / "_lens.txt"), mode="wb") as file:
+                pickle.dump([], file)
+            (self._mem_list._folder / "_metadata.txt").touch()
+            (self._mem_list._folder / "_metadata.txt").write_text("MemList")
+        elif not (self._mem_list._folder / "_counter.txt").is_file():
+            raise ValueError(f"{(self._mem_list._folder / '_counter.txt')} must be a file")
+        elif not (self._mem_list._folder / "_filenames.txt").is_file():
+            raise ValueError(f"{(self._mem_list._folder / '_filenames.txt')} must be a file")
+        elif not (self._mem_list._folder / "_lens.txt").is_file():
+            raise ValueError(f"{(self._mem_list._folder / '_lens.txt')} must be a file")
+        elif not (self._mem_list._folder / "_metadata.txt").is_file():
+            raise ValueError(f"{(self._mem_list._folder / '_metadata.txt')} must be a file")
+        elif (self._mem_list._folder / "_metadata.txt").read_text() != "MemList":
+            raise ValueError(f"{self._mem_list._folder} is not for a MemList")
+        else:
+            with open((self._mem_list._folder / "_filenames.txt"), mode="rb") as file:
+                self._mem_list._filenames = pickle.load(file)
+            assert type(self._mem_list._filenames) is type([]), self._mem_list._filenames
+            assert all(isinstance(x, str) for x in self._mem_list._filenames), self._mem_list._filenames
+            with open((self._mem_list._folder / "_lens.txt"), mode="rb") as file:
+                self._mem_list._lens = pickle.load(file)
+            assert type(self._mem_list._lens) is type([]), self._mem_list._lens
+            assert all(isinstance(x, int) for x in self._mem_list._lens), self._mem_list._lens
+            self._mem_list._len = sum(self._mem_list._lens)
+
+    def __enter__(self: MemListProxy, /) -> MemList[Any]:
+        return self._mem_list
+
+    def __exit__(self: MemListProxy, exc_type: Type[ET], exc_val: ET, exc_traceback: TracebackType, /) -> None:
+        self._mem_list._commit_chunk()
+        with open((self._mem_list._folder / "_filenames.txt"), mode="wb") as file:
+            pickle.dump(self._mem_list._filenames, file)
+        with open((self._mem_list._folder / "_lens.txt"), mode="wb") as file:
+            pickle.dump(self._mem_list._lens, file)
+
 
 if sys.version_info < (3, 9):
     collections.abc.MutableSequence.register(MemList)
