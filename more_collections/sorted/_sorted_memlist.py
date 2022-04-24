@@ -39,6 +39,7 @@ FOLDER.mkdir(exist_ok=True)
 
 class SortedMemList(SortedMutableSequence[T], Generic[T]):
     _cahce: Optional[list[T]]
+    _is_closed: bool
     _fenwick: Optional[list[int]]
     _file: Optional[str]
     _filenames: list[str]
@@ -50,6 +51,8 @@ class SortedMemList(SortedMutableSequence[T], Generic[T]):
     __slots__ = {
         "_cache":
             "Cache the contents of a file.",
+        "_is_closed":
+            "Checks if the mem list is closed.",
         "_fenwick":
             "The length of each individual segment is stored"
             " via a Fenwick tree when needed. `None` while"
@@ -85,9 +88,9 @@ class SortedMemList(SortedMutableSequence[T], Generic[T]):
             self.extend(iterable)
 
     def __contains__(self: SortedMemList[Any], value: Any, /) -> bool:
-        if self._len == 0:
-            return False
-        if value < self._mins[0]:
+        if self._is_closed:
+            raise RuntimeError("sorted mem list used outside of with block")
+        elif self._len == 0 or value < self._mins[0]:
             return False
         elif value >= self._mins[-1]:
             cache = self._cache_chunk(-1)
@@ -96,7 +99,13 @@ class SortedMemList(SortedMutableSequence[T], Generic[T]):
         i = bisect(cache, value) - 1
         return 0 <= i < len(cache) and not (value is not cache[i] != value)
 
+    def __del__(self: SortedMemList[Any], /) -> None:
+        if self._folder is None:
+            self.clear()
+
     def __delitem__(self: SortedMemList[Any], index: Union[int, slice], /) -> None:
+        if self._is_closed:
+            raise RuntimeError("sorted mem list used outside of with block")
         if isinstance(index, slice):
             len_ = self._len
             range_ = range(len_)[index]
@@ -212,6 +221,8 @@ class SortedMemList(SortedMutableSequence[T], Generic[T]):
         ...
 
     def __getitem__(self, index, /):
+        if self._is_closed:
+            raise RuntimeError("sorted mem list used outside of with block")
         if isinstance(index, slice):
             range_ = range(self._len)[index]
             if range_.step < 0:
@@ -253,18 +264,24 @@ class SortedMemList(SortedMutableSequence[T], Generic[T]):
             return self._cache_chunk(i)[j]
 
     def __iter__(self: SortedMemList[T], /) -> SortedIterator[T]:
+        if self._is_closed:
+            raise RuntimeError("sorted mem list used outside of with block")
         return SortedUserIterator(chain.from_iterable(
             self._cache_chunk(i)
             for i, _ in enumerate(self._lens)
         ))
 
     def __len__(self: SortedMemList[Any], /) -> int:
+        if self._is_closed:
+            raise RuntimeError("sorted mem list used outside of with block")
         return self._len
 
     def __repr__(self: SortedMemList[Any], /) -> str:
         return object.__repr__(self)
 
     def __reversed__(self: SortedMemList[T], /) -> Iterator[T]:
+        if self._is_closed:
+            raise RuntimeError("sorted mem list used outside of with block")
         return chain.from_iterable(
             reversed(self._cache_chunk(-i))
             for i, _ in enumerate(self._lens, 1)
@@ -359,6 +376,8 @@ class SortedMemList(SortedMutableSequence[T], Generic[T]):
         return data
 
     def append(self: SortedMemList[T], value: T, /) -> None:
+        if self._is_closed:
+            raise RuntimeError("sorted mem list used outside of with block")
         if self._len == 0:
             self._cache = [value]
             self._fenwick = None
@@ -425,6 +444,8 @@ class SortedMemList(SortedMutableSequence[T], Generic[T]):
             self._mins[i] = self._cache[0]
 
     def clear(self: SortedMemList[Any], /) -> None:
+        if self._is_closed:
+            raise RuntimeError("sorted mem list used outside of with block")
         folder = FOLDER if self._folder is None else self._folder
         for filename in self._filenames:
             (folder / filename).unlink()
@@ -443,6 +464,8 @@ class SortedMemList(SortedMutableSequence[T], Generic[T]):
         self._mins.clear()
 
     def discard(self: SortedMemList[T], value: T, /) -> None:
+        if self._is_closed:
+            raise RuntimeError("sorted mem list used outside of with block")
         if self._len == 0:
             return
         if value < self._mins[0] or (value > self._mins[-1] and value > self._cache_chunk(-1)[-1]):
@@ -485,6 +508,8 @@ class SortedMemList(SortedMutableSequence[T], Generic[T]):
             self._lens[i] = len(self._cache)
 
     def extend(self: SortedMemList[T], iterable: Iterable[T], /) -> None:
+        if self._is_closed:
+            raise RuntimeError("sorted mem list used outside of with block")
         if not isinstance(iterable, Iterable):
             raise TypeError(f"extend expected an iterable, got {iterable!r}")
         if type(iterable) is type([]):
@@ -578,3 +603,4 @@ class SortedMemListProxy:
             pickle.dump(self._mem_list._lens, file)
         with open((self._mem_list._folder / "_mins.txt"), mode="wb") as file:
             pickle.dump(self._mem_list._mins, file)
+        self._mem_list._is_closed = True

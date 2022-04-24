@@ -34,6 +34,7 @@ FOLDER.mkdir(exist_ok=True)
 
 class MemList(MutableSequence[T], Generic[T]):
     _cache: Optional[list[T]]
+    _is_closed: bool
     _fenwick: Optional[list[int]]
     _file: Optional[str]
     _filenames: list[str]
@@ -44,6 +45,8 @@ class MemList(MutableSequence[T], Generic[T]):
     __slots__ = {
         "_cache":
             "Cache the contents of a file.",
+        "_is_closed":
+            "Checks if the mem list is closed.",
         "_fenwick":
             "The length of each individual segment is stored"
             " via a Fenwick tree when needed. `None` while"
@@ -66,6 +69,7 @@ class MemList(MutableSequence[T], Generic[T]):
         if iterable is not None and not isinstance(iterable, Iterable):
             raise TypeError(f"{type(self).__name__} expected an iterable, got {iterable!r}")
         self._cache = None
+        self._is_closed = False
         self._fenwick = None
         self._file = None
         self._filenames = []
@@ -85,10 +89,12 @@ class MemList(MutableSequence[T], Generic[T]):
             self._len = CHUNKSIZE * (len(self._lens) - 1) + self._lens[-1]
 
     def __del__(self: MemList[Any], /) -> None:
-        if self._folder is FOLDER:
+        if self._folder is None:
             self.clear()
 
     def __delitem__(self: MemList[Any], index: Union[int, slice], /) -> None:
+        if self._is_closed:
+            raise RuntimeError("mem list used outside of with block")
         if isinstance(index, slice):
             len_ = self._len
             range_ = range(len_)[index]
@@ -199,6 +205,8 @@ class MemList(MutableSequence[T], Generic[T]):
         ...
 
     def __getitem__(self, index, /):
+        if self._is_closed:
+            raise RuntimeError("mem list used outside of with block")
         if isinstance(index, slice):
             range_ = range(self._len)[index]
             # Empty slice.
@@ -250,18 +258,24 @@ class MemList(MutableSequence[T], Generic[T]):
             return self._cache_chunk(i)[j]
 
     def __iter__(self: MemList[T], /) -> Iterator[T]:
+        if self._is_closed:
+            raise RuntimeError("mem list used outside of with block")
         return chain.from_iterable(
             self._cache_chunk(i)
             for i, _ in enumerate(self._lens)
         )
 
     def __len__(self: MemList[Any], /) -> int:
+        if self._is_closed:
+            raise RuntimeError("mem list used outside of with block")
         return self._len
 
     def __repr__(self: MemList[Any], /) -> str:
         return object.__repr__(self)
 
     def __reversed__(self: MemList[T], /) -> Iterator[T]:
+        if self._is_closed:
+            raise RuntimeError("mem list used outside of with block")
         return chain.from_iterable(
             reversed(self._cache_chunk(-i))
             for i, _ in enumerate(self._lens, 1)
@@ -276,6 +290,8 @@ class MemList(MutableSequence[T], Generic[T]):
         ...
 
     def __setitem__(self, index, value, /):
+        if self._is_closed:
+            raise RuntimeError("mem list used outside of with block")
         if isinstance(index, slice):
             raise NotImplementedError("Seglists currently do not support slice assignments")
         try:
@@ -380,6 +396,8 @@ class MemList(MutableSequence[T], Generic[T]):
         return data
 
     def clear(self: MemList[Any], /) -> None:
+        if self._is_closed:
+            raise RuntimeError("mem list used outside of with block")
         folder = FOLDER if self._folder is None else self._folder
         for filename in self._filenames:
             (folder / filename).unlink()
@@ -396,6 +414,8 @@ class MemList(MutableSequence[T], Generic[T]):
         self._lens.clear()
 
     def insert(self: MemList[T], index: int, value: T, /) -> None:
+        if self._is_closed:
+            raise RuntimeError("mem list used outside of with block")
         if not isinstance(index, SupportsIndex):
             raise TypeError(f"index could not be interpreted as an integer, got {index!r}")
         index = operator.index(index)
@@ -533,6 +553,7 @@ class MemListProxy:
             pickle.dump(self._mem_list._filenames, file)
         with open((self._mem_list._folder / "_lens.txt"), mode="wb") as file:
             pickle.dump(self._mem_list._lens, file)
+        self._mem_list._is_closed = True
 
 
 if sys.version_info < (3, 9):
