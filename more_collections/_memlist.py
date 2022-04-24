@@ -495,6 +495,19 @@ class MemList(MutableSequence[T], Generic[T]):
                 self._cache_chunk(i).insert(j, value)
                 self._fenwick_update(i, 1)
 
+    def reverse(self: MemList[Any], /) -> None:
+        if len(self._lens) > 1:
+            for i in range(len(self._lens)):
+                self._cache_chunk(i).reverse()
+            self._fenwick = None
+            self._filenames.reverse()
+            self._lens.reverse()
+        elif self._cache is None:
+            for i in range(len(self._lens)):
+                self._cache_chunk(i).reverse()
+        else:
+            self._cache.reverse()
+
     @classmethod
     def open(cls: Type[MemList[Any]], directory: Union[Path, str], /) -> MemListProxy:
         return MemListProxy(Path(directory))
