@@ -73,7 +73,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         i = bisect(L, value) - 1
         return 0 <= i < len(L) and not (value is not L[i] != value)
 
-    def __delitem__(self: SortedList[T], index: Union[int, slice], /) -> None:
+    def __delitem__(self: SortedList[Any], index: Union[int, slice], /) -> None:
         if isinstance(index, slice):
             range_ = range(self._len)[index]
             if self._len == len(range_):
@@ -376,6 +376,8 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         mins = self._mins
         if not mins[0] <= value <= data[-1][-1]:
             return
+        elif value < key(data[0][-1]):
+            i = len(mins) - 1
         elif value >= mins[-1]:
             i = len(mins) - 1
         else:
@@ -506,7 +508,7 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
         i = bisect(L, kv, key=key) - 1
         return 0 <= i < len(L) and not (value is not L[i] != value)
 
-    def __delitem__(self: SortedKeyList[T], index: Union[int, slice], /) -> None:
+    def __delitem__(self: SortedKeyList[Any], index: Union[int, slice], /) -> None:
         key = self.__key
         if isinstance(index, slice):
             range_ = range(self._len)[index]
@@ -815,6 +817,8 @@ class SortedKeyList(SortedKeyMutableSequence[T], Generic[T]):
         kv = key(value)
         if not mins[0] <= kv <= key(data[-1][-1]):
             return
+        elif kv <= data[0][-1]:
+            i = 0
         elif kv >= mins[-1]:
             i = len(mins) - 1
         else:
