@@ -77,6 +77,7 @@ class SortedMemList(SortedMutableSequence[T], Generic[T]):
         if iterable is not None and not isinstance(iterable, Iterable):
             raise TypeError(f"{type(self).__name__} expected an iterable, got {iterable!r}")
         self._cache = None
+        self._is_closed = False
         self._fenwick = None
         self._file = None
         self._filenames = []
