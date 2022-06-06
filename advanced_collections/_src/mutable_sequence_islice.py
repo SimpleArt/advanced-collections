@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, Union
+from typing import Generic, Optional, TypeVar, Union
 
 from .viewable_mutable_sequence import ViewableMutableSequence
 from .sequence_islice import SequenceIslice

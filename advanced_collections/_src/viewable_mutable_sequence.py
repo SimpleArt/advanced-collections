@@ -1,6 +1,6 @@
 import sys
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, overload
 
 if sys.version_info < (3, 9):
     from typing import MutableSequence
@@ -24,7 +24,7 @@ class ViewableMutableSequence(ViewableSequence[T], MutableSequence[T], ABC, Gene
     def __getitem__(self: Self, index: int, /) -> T: ...
 
     @overload
-    def __getitem__(self: Self, index: slice, /) -> ViewableMutableSequence[T]: ...
+    def __getitem__(self: Self, index: slice, /) -> "ViewableMutableSequence[T]": ...
 
     @abstractmethod
     def __getitem__(self, index, /):

@@ -7,7 +7,7 @@ if sys.version_info < (3, 9):
 else:
     from collections.abc import Iterator
 
-import advanced_collections.abc
+import advanced_collections
 
 __all__ = ["SequenceIsliceProxy"]
 
@@ -16,18 +16,18 @@ T_co = TypeVar("T_co", covariant=True)
 
 
 class SequenceIsliceProxy(Generic[T_co]):
-    _sequence: advanced_collections.abc.ViewableSequence[T_co]
+    _sequence: advanced_collections._src.viewable_sequence.ViewableSequence[T_co]
 
     __slots__ = {
         "_sequence":
             "The viewable sequence.",
     }
 
-    def __init__(self: Self, sequence: advanced_collections.abc.ViewableSequence[T_co], /) -> None:
-        assert isinstance(sequence, advanced_collections.abc.ViewableSequence)
+    def __init__(self: Self, sequence: advanced_collections._src.viewable_sequence.ViewableSequence[T_co], /) -> None:
+        assert isinstance(sequence, advanced_collections._src.viewable_sequence.ViewableSequence)
         self._sequence = sequence
 
-    def __getitem__(self: Self, index: slice, /) -> advanced_collections.abc.SequenceIslice[T_co]:
+    def __getitem__(self: Self, index: slice, /) -> advanced_collections._src.sequence_islice.SequenceIslice[T_co]:
         if not isinstance(index, slice):
             raise TypeError(f"expected sequence.islice[start:stop:step], got sequence.islice[{index!r}]")
         # Cast integer-like indices to integers.
@@ -36,4 +36,4 @@ class SequenceIsliceProxy(Generic[T_co]):
         start = None if index.start is None else range_.start
         stop = None if index.stop is None else range_.stop
         step = None if index.step is None else range_.step
-        return advanced_collections.abc.SequenceIslice(self._sequence, start, stop, step)
+        return advanced_collections._src.sequence_islice.SequenceIslice(self._sequence, start, stop, step)

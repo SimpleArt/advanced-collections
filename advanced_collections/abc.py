@@ -1,5 +1,5 @@
-from ._src.comparable import SupportsRichComparison
-from ._src.key_comparable import SupportsKeyComparison
+from ._src.comparable import SupportsRichHashableComparison
+from ._src.key_comparable import KeyComparable
 from ._src.viewable_sequence import ViewableSequence
 from ._src.sequence_islice_proxy import SequenceIsliceProxy
 from ._src.sequence_islice import SequenceIslice
