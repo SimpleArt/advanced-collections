@@ -1,17 +1,19 @@
 import pickle
 from bisect import bisect
 from collections import OrderedDict
-from collections.abc import Hashable, Iterable, Iterator, MutableMapping
+from collections.abc import Hashable, Iterator, MutableMapping
 from heapq import nlargest, nsmallest
 from itertools import chain, islice
 from pathlib import Path
 from types import TracebackType
-from typing import Any, Generic, Optional, Type, TypeVar, Union
+from typing import Generic, Optional, Type, TypeVar, Union
+
+from .comparable import SupportsRichHashableComparison
 
 __all__ = ["BigDict"]
 
 ET = TypeVar("ET", bound=BaseException)
-KT = TypeVar("KT", bound=Hashable)
+KT = TypeVar("KT", bound=SupportsRichHashableComparison)
 VT = TypeVar("VT")
 
 Self = TypeVar("Self", bound="BigDict")

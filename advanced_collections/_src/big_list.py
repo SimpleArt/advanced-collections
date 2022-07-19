@@ -18,7 +18,7 @@ T = TypeVar("T")
 
 CHUNKSIZE = 4096
 
-def ensure_file(path: Path, default: VT) -> VT:
+def ensure_file(path: Path, default: T) -> T:
     if not path.exists():
         with open(path, mode="wb") as file:
             pickle.dump(default, file)
