@@ -5,7 +5,7 @@ from collections.abc import Iterable, Iterator
 from itertools import chain, islice
 from pathlib import Path
 from types import TracebackType
-from typing import Any, ClassVar, Generic, Optional, SupportsIndex, Type, TypeVar, Union, overload
+from typing import Any, Generic, Optional, SupportsIndex, Type, TypeVar, Union, overload
 
 from .mutable_sequence_islice import MutableSequenceIslice
 from .viewable_mutable_sequence import ViewableMutableSequence
