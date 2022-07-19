@@ -18,6 +18,14 @@ T = TypeVar("T")
 
 CHUNKSIZE = 4096
 
+def ensure_file(path: Path, default: VT) -> VT:
+    if not path.exists():
+        with open(path, mode="wb") as file:
+            pickle.dump(default, file)
+        return default
+    with open(path, mode="rb") as file:
+        return pickle.load(file)
+
 
 class BigList(ViewableMutableSequence[T], Generic[T]):
     _cache: OrderedDict[str, list[T]]
@@ -49,21 +57,9 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
         self._path.mkdir(exist_ok=True)
         self._fenwick = None
         self._cache = OrderedDict()
-        if not (self._path / "filenames.txt").exists():
-            (self._path / "filenames.txt").touch()
-            with open(self._path / "filenames.txt", mode="wb") as file:
-                pickle.dump([], file)
-        with open(self._path / "filenames.txt", mode="rb") as file:
-            self._filenames = pickle.load(file)
-        if not (self._path / "counter.txt").exists():
-            (self._path / "counter.txt").touch()
-            (self._path / "counter.txt").write_text("0")
-        if not (self._path / "lens.txt").exists():
-            (self._path / "lens.txt").touch()
-            with open(self._path / "lens.txt", mode="wb") as file:
-                pickle.dump([], file)
-        with open(self._path / "lens.txt", mode="rb") as file:
-            self._lens = pickle.load(file)
+        ensure_file(self._path / "counter.txt", 0)
+        self._filenames = ensure_file(self._path / "filenames.txt", [])
+        self._lens = ensure_file(self._path / "filenames.txt", [])
         self._len = sum(self._lens)
 
     def __del__(self: Self, /) -> None:
