@@ -18,7 +18,7 @@ T1_co = TypeVar("T1_co", bound=SupportsRichHashableComparison)
 T2_co = TypeVar("T2_co", bound=SupportsRichHashableComparison)
 
 
-class SortedCollection(Iterable[T2_co], Reversible[T2_co], Sized, ABC, Generic[T1_co, T2_co]):
+class SortedCollection(Reversible[T2_co], Sized, ABC, Generic[T1_co, T2_co]):
 
     __slots__ = ()
 
