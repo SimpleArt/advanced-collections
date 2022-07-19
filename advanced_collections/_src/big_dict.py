@@ -6,7 +6,7 @@ from heapq import nlargest, nsmallest
 from itertools import chain, islice
 from pathlib import Path
 from types import TracebackType
-from typing import Any, Generic, Optional, SupportsIndex, Type, TypeVar, Union, overload
+from typing import Any, Generic, Optional, Type, TypeVar, Union
 
 __all__ = ["BigDict"]
 
