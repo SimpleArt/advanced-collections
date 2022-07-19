@@ -199,6 +199,9 @@ class Deque(ViewableMutableSequence[T], Generic[T]):
     def append(self: Self, element: T, /) -> None:
         self._forward.append(element)
 
+    def appendleft(self: Self, element: T, /) -> None:
+        self._reversed.append(element)
+
     def clear(self: Self, /) -> None:
         self._forward.clear()
         self._reversed.clear()
@@ -211,6 +214,9 @@ class Deque(ViewableMutableSequence[T], Generic[T]):
 
     def extend(self: Self, iterable: Iterable[T], /) -> None:
         self._forward.extend(iterable)
+
+    def extendleft(self: Self, iterable: Iterable[T], /) -> None:
+        self._reversed.extend(iterable)
 
     def index(self: Self, element: Any, start: int = 0, stop: Optional[int] = None, /) -> int:
         start = operator.index(start)
@@ -265,3 +271,50 @@ class Deque(ViewableMutableSequence[T], Generic[T]):
                 return self._reversed.pop(~index)
             else:
                 return self._forward.pop(index - len(self._reversed))
+
+    def popleft(self: Self, /) -> T:
+        if len(self) == 0:
+            raise IndexError("cannot pop from empty deque")
+        elif len(self._reversed) > 0:
+            return self._reversed.pop()
+        elif len(self) < 32 or len(self._forward) < 2 * len(self._reversed) < 4 * len(self._forward):
+            pass
+        elif len(self._forward) > len(self._reversed):
+            diff = len(self._forward) - len(self._reversed)
+            self._reversed[:0] = self._forward[diff // 2::-1]
+            del self._forward[diff // 2::-1]
+        else:
+            diff = len(self._reversed) - len(self._forward)
+            self._forward[:0] = self._reversed[diff // 2::-1]
+            del self._reversed[diff // 2::-1]
+        if len(self._forward) > 0:
+            return self._reversed.pop()
+        else:
+            return self._forward.pop(0)
+
+    def reverse(self: Self, /) -> None:
+        self._forward, self._reversed = self._reversed, self._forward
+
+    def rotate(self: Self, n: int = 1, /) -> None:
+        n = (-operator.index(n)) % len(self)
+        if n == 0:
+            return
+        elif n < len(self) - n:
+            n = len(self) - n
+            self._reversed.extend(
+                self._forward.pop()
+                for _ in range(min(n, len(self._forward)))
+            )
+            n -= len(self._forward)
+            if n > 0:
+                self._reversed.extend(self._reversed[:n])
+                del self._reversed[:n]
+        else:
+            self._forward.extend(
+                self._reversed.pop()
+                for _ in range(min(n, len(self._reversed)))
+            )
+            n -= len(self._reversed)
+            if n > 0:
+                self._forward.extend(self._forward[:n])
+                del self._forward[:n]
