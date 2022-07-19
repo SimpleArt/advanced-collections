@@ -23,9 +23,9 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
     _cache: OrderedDict[str, list[T]]
     _fenwick: Optional[list[int]]
     _filenames: list[str]
-    _path: Path
     _len: int
     _lens: list[int]
+    _path: Path
 
     __slots__ = {
         "_cache":
@@ -354,7 +354,7 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
             i, j = self._fenwick_index(index)
             self._cache_chunk(i)[j] = value
 
-    def __str__(self: Self, /) -> str:
+    def __repr__(self: Self, /) -> str:
         return f"{type(self).__name__}({self._path})"
 
     def _balance(self: Self, index: int, /) -> None:
@@ -369,7 +369,7 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
             self._cache[self._filenames[-1]] = chunk[len(chunk) // 2:]
             del chunk[len(chunk) // 2:]
             self._fenwick = None
-            self._lens[0] = len(chunk) // 2
+            self._lens[0] = len(chunk)
             self._lens.append(len(self._cache_chunk(-1)))
             return
         else:
@@ -404,14 +404,14 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
                 diff = lens[0] - lens[1]
                 self._cache_chunk(1)[:0] = self._cache_chunk(0)[-diff // 2:]
                 del self._cache_chunk(0)[-diff // 2:]
-                self._fenwick_update(0, self._cache_chunk(0) - lens[0])
-                self._fenwick_update(1, self._cache_chunk(1) - lens[1])
+                self._fenwick_update(0, len(self._cache_chunk(0)) - lens[0])
+                self._fenwick_update(1, len(self._cache_chunk(1)) - lens[1])
             elif lens[0] < lens[1]:
                 diff = lens[1] - lens[0]
                 self._cache_chunk(0).extend(self._cache_chunk(1)[:diff // 2])
                 del self._cache_chunk(1)[:diff // 2]
-                self._fenwick_update(0, self._cache_chunk(0) - lens[0])
-                self._fenwick_update(1, self._cache_chunk(1) - lens[1])
+                self._fenwick_update(0, len(self._cache_chunk(0)) - lens[0])
+                self._fenwick_update(1, len(self._cache_chunk(1)) - lens[1])
         elif index + 1 == len(lens):
             if lens[-1] + lens[-2] < CHUNKSIZE:
                 self._len += lens[-1]
@@ -486,6 +486,9 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
                 self._cache_chunk(index - 1)[:] = chunk[:len(chunk) // 3]
                 self._cache_chunk(index)[:] = chunk[len(chunk) // 3 : 2 * len(chunk) // 3]
                 self._cache_chunk(index + 1)[:] = chunk[2 * len(chunk) // 3:]
+                self._fenwick_update(index - 1, len(self._cache_chunk(index - 1)) - lens[index - 1])
+                self._fenwick_update(index, len(self._cache_chunk(index)) - lens[index])
+                self._fenwick_update(index + 1, len(self._cache_chunk(index + 1)) - lens[index + 1])
 
     def _cache_chunk(self: Self, index: int, /) -> list[T]:
         filename = self._filenames[index]
