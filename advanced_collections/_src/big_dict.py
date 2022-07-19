@@ -66,6 +66,8 @@ class BigDict(MutableMapping[KT, VT], Generic[KT, VT]):
             pickle.dump(self._filenames, file)
         with open(self._path / "lens.txt", mode="wb") as file:
             pickle.dump(self._lens, file)
+        with open(self._path / "mins.txt", mode="wb") as file:
+            pickle.dump(self._mins, file)
         for filename, segment in self._cache.items():
             self._commit_chunk(filename, segment)
 
@@ -101,6 +103,8 @@ class BigDict(MutableMapping[KT, VT], Generic[KT, VT]):
             pickle.dump(self._filenames, file)
         with open(self._path / "lens.txt", mode="wb") as file:
             pickle.dump(self._lens, file)
+        with open(self._path / "mins.txt", mode="wb") as file:
+            pickle.dump(self._mins, file)
         for filename, segment in self._cache.items():
             self._commit_chunk(filename, segment)
 
