@@ -38,9 +38,12 @@ class Deque(ViewableMutableSequence[T], Generic[T]):
 
     def __add__(self: Self, other: "FifoQueue[T]", /) -> Self:
         if isinstance(other, FifoQueue) and type(other).__add__ is Fifo.__add__:
-            self._forward.extend(reversed(other._reversed))
-            self._forward.extend(other._forward)
-            return self
+            result = type(self)()
+            result._reversed = self._forward[::-1]
+            result._reversed.extend(self._reversed)
+            result._forward = other._reversed[::-1]
+            result._forward.extend(other._forward)
+            return result
         else:
             return NotImplemented
 
