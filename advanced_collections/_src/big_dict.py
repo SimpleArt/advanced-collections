@@ -51,7 +51,9 @@ class BigDict(MutableMapping[KT, VT], Generic[KT, VT]):
     }
 
     def __init__(self: Self, path: Union[Path, str], /) -> None:
-        self._path = Path(path)
+        self._path = Path(path).resolve()
+        self._path.mkdir(exist_ok=True)
+        self._path /= "dict"
         self._path.mkdir(exist_ok=True)
         self._cache = OrderedDict()
         self._filenames = ensure_file(self._path / "filenames.txt", [])
@@ -128,6 +130,9 @@ class BigDict(MutableMapping[KT, VT], Generic[KT, VT]):
     def __len__(self: Self, /) -> int:
         return self._len
 
+    def __repr__(self: Self, /) -> str:
+        return f"{type(self).__name__}({self._path.parent})"
+
     def __reversed__(self: Self, /) -> Iterator[KT]:
         return chain.from_iterable(
             reversed(self._cache_chunk(~i))
@@ -151,9 +156,6 @@ class BigDict(MutableMapping[KT, VT], Generic[KT, VT]):
         self._len += len(chunk) - len_
         if (hkey, key) < self._mins[index]:
             self._mins[index] = (hkey, key)
-
-    def __str__(self: Self, /) -> str:
-        return f"{type(self).__name__}({self._path})"
 
     def _balance(self: Self, index: int, /) -> None:
         lens = self._lens

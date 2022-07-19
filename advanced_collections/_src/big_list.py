@@ -45,6 +45,8 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
     def __init__(self: Self, path: Union[Path, str], /) -> None:
         self._path = Path(path)
         self._path.mkdir(exist_ok=True)
+        self._path /= "list"
+        self._path.mkdir(exist_ok=True)
         self._fenwick = None
         self._cache = OrderedDict()
         if not (self._path / "filenames.txt").exists():
@@ -330,6 +332,9 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
     def __len__(self: Self, /) -> int:
         return self._len
 
+    def __repr__(self: Self, /) -> str:
+        return f"{type(self).__name__}({self._path.parent})"
+
     def __reversed__(self: Self, /) -> Iterator[T]:
         return chain.from_iterable(
             reversed(self._cache_chunk(~i))
@@ -353,9 +358,6 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
         else:
             i, j = self._fenwick_index(index)
             self._cache_chunk(i)[j] = value
-
-    def __repr__(self: Self, /) -> str:
-        return f"{type(self).__name__}({self._path})"
 
     def _balance(self: Self, index: int, /) -> None:
         lens = self._lens
