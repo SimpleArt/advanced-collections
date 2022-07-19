@@ -57,8 +57,8 @@ class BigDict(MutableMapping[KT, VT], Generic[KT, VT]):
         self._path.mkdir(exist_ok=True)
         self._cache = OrderedDict()
         self._filenames = ensure_file(self._path / "filenames.txt", [])
+        self._mins = [(hash(key), key) for key in ensure_file(self._path / "keys.txt", [])]
         self._lens = ensure_file(self._path / "lens.txt", [])
-        self._mins = ensure_file(self._path / "mins.txt", [])
         assert len(self._filenames) == len(self._lens) == len(self._mins), "broken database files"
         self._len = sum(self._lens)
         ensure_file(self._path / "counter.txt", 0)
@@ -66,10 +66,10 @@ class BigDict(MutableMapping[KT, VT], Generic[KT, VT]):
     def __del__(self: Self, /) -> None:
         with open(self._path / "filenames.txt", mode="wb") as file:
             pickle.dump(self._filenames, file)
+        with open(self._path / "keys.txt", mode="wb") as file:
+            pickle.dump([key for _, key in self._mins], file)
         with open(self._path / "lens.txt", mode="wb") as file:
             pickle.dump(self._lens, file)
-        with open(self._path / "mins.txt", mode="wb") as file:
-            pickle.dump(self._mins, file)
         for filename, segment in self._cache.items():
             self._commit_chunk(filename, segment)
 
@@ -103,10 +103,10 @@ class BigDict(MutableMapping[KT, VT], Generic[KT, VT]):
     ) -> None:
         with open(self._path / "filenames.txt", mode="wb") as file:
             pickle.dump(self._filenames, file)
+        with open(self._path / "keys.txt", mode="wb") as file:
+            pickle.dump([key for _, key in self._mins], file)
         with open(self._path / "lens.txt", mode="wb") as file:
             pickle.dump(self._lens, file)
-        with open(self._path / "mins.txt", mode="wb") as file:
-            pickle.dump(self._mins, file)
         for filename, segment in self._cache.items():
             self._commit_chunk(filename, segment)
 
