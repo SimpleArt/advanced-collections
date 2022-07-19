@@ -68,7 +68,13 @@ class Deque(ViewableMutableSequence[T], Generic[T]):
             del self._reversed[reversed.start : reversed.stop : reversed.step]
         else:
             index = range(len(self))[index]
-            if len(self) < 32 or len(self._forward) < 2 * len(self._reversed) < 4 * len(self._forward):
+            if index == 0:
+                self.popleft()
+                return
+            elif index + 1 == len(self):
+                self.pop()
+                return
+            elif len(self) < 32 or len(self._forward) < 2 * len(self._reversed) < 4 * len(self._forward):
                 pass
             elif len(self._forward) > len(self._reversed):
                 diff = len(self._forward) - len(self._reversed)
@@ -231,55 +237,10 @@ class Deque(ViewableMutableSequence[T], Generic[T]):
             index += len(self)
         if index <= 0:
             self._reversed.append(element)
+            return
         elif index >= len(self):
             self._forward.append(element)
-        else:
-            if len(self) < 32 or len(self._forward) < 2 * len(self._reversed) < 4 * len(self._forward):
-                pass
-            elif len(self._forward) > len(self._reversed):
-                diff = len(self._forward) - len(self._reversed)
-                self._reversed[:0] = self._forward[diff // 2::-1]
-                del self._forward[diff // 2::-1]
-            else:
-                diff = len(self._reversed) - len(self._forward)
-                self._forward[:0] = self._reversed[diff // 2::-1]
-                del self._reversed[diff // 2::-1]
-            if index < len(self._reversed):
-                self._reversed.insert(len(self._reversed) - index, element)
-            else:
-                self._forward.insert(index - len(self._reversed), element)
-
-    def pop(self: Self, index: int = -1, /) -> T:
-        index = operator.index(index)
-        if index < 0:
-            index += len(self)
-        if index == 0 < len(self._reversed):
-            return self._reversed.pop()
-        elif index + 1 == len(self) and len(self._forward) > 0:
-            return self._forward.pop()
-        elif not 0 <= index < len(self):
-            raise IndexError("pop index out of range")
-        else:
-            if len(self) < 32 or len(self._forward) < 2 * len(self._reversed) < 4 * len(self._forward):
-                pass
-            elif len(self._forward) > len(self._reversed):
-                diff = len(self._forward) - len(self._reversed)
-                self._reversed[:0] = self._forward[diff // 2::-1]
-                del self._forward[diff // 2::-1]
-            else:
-                diff = len(self._reversed) - len(self._forward)
-                self._forward[:0] = self._reversed[diff // 2::-1]
-                del self._reversed[diff // 2::-1]
-            if index < len(self._reversed):
-                return self._reversed.pop(~index)
-            else:
-                return self._forward.pop(index - len(self._reversed))
-
-    def popleft(self: Self, /) -> T:
-        if len(self) == 0:
-            raise IndexError("cannot pop from empty deque")
-        elif len(self._reversed) > 0:
-            return self._reversed.pop()
+            return
         elif len(self) < 32 or len(self._forward) < 2 * len(self._reversed) < 4 * len(self._forward):
             pass
         elif len(self._forward) > len(self._reversed):
@@ -290,10 +251,46 @@ class Deque(ViewableMutableSequence[T], Generic[T]):
             diff = len(self._reversed) - len(self._forward)
             self._forward[:0] = self._reversed[diff // 2::-1]
             del self._reversed[diff // 2::-1]
-        if len(self._forward) > 0:
-            return self._reversed.pop()
+        if index < len(self._reversed):
+            self._reversed.insert(len(self._reversed) - index, element)
         else:
-            return self._forward.pop(0)
+            self._forward.insert(index - len(self._reversed), element)
+
+    def pop(self: Self, index: int = -1, /) -> T:
+        index = operator.index(index)
+        if index < 0:
+            index += len(self)
+        if index == 0:
+            return self.popleft()
+        elif index + 1 == len(self):
+            if len(self._forward) == 0:
+                self._forward = self._reversed[-len(self._reversed) // 4 :: -1]
+                del self._reversed[-len(self._reversed) // 4 :: -1]
+            return self._forward.pop()
+        elif not 0 < index < len(self):
+            raise IndexError("pop index out of range")
+        elif len(self) < 32 or len(self._forward) < 2 * len(self._reversed) < 4 * len(self._forward):
+            pass
+        elif len(self._forward) > len(self._reversed):
+            diff = len(self._forward) - len(self._reversed)
+            self._reversed[:0] = self._forward[diff // 2 :: -1]
+            del self._forward[diff // 2 :: -1]
+        else:
+            diff = len(self._reversed) - len(self._forward)
+            self._forward[:0] = self._reversed[diff // 2 :: -1]
+            del self._reversed[diff // 2 :: -1]
+        if index < len(self._reversed):
+            return self._reversed.pop(~index)
+        else:
+            return self._forward.pop(index - len(self._reversed))
+
+    def popleft(self: Self, /) -> T:
+        if len(self) == 0:
+            raise IndexError("cannot pop from empty deque")
+        elif len(self._reversed) == 0:
+            self._reversed = self._forward[-len(self._forward) // 4 :: -1]
+            del self._forward[-len(self._forward) // 4 :: -1]
+        return self._reversed.pop()
 
     def reverse(self: Self, /) -> None:
         self._forward, self._reversed = self._reversed, self._forward
