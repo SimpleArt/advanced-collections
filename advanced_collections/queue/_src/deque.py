@@ -17,40 +17,40 @@ Self = TypeVar("Self", bound="Deque")
 reprs_seen: set[int] = set()
 
 
-    _forward: list[T]
-    _reversed: list[T]
 class Deque(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
+    _back: list[T]
+    _front: list[T]
 
     __slots__ = {
-        "_forward":
-            "A list that contains the end of the data in order.",
-        "_reversed":
-            "A list that contains the start of the data in reversed order.",
+        "_back":
+            "A list that contains the back of the data in order.",
+        "_front":
+            "A list that contains the front of the data in reversed order.",
     }
 
     def __init__(self: Self, iterable: Optional[Iterable[T]] = None, /) -> None:
         if iterable is None:
-            self._forward = []
-            self._reversed = []
+            self._back = []
+            self._front = []
         elif isinstance(iterable, Iterable):
-            self._forward = [*iterable]
-            self._reversed = []
+            self._back = [*iterable]
+            self._front = []
         else:
             raise TypeError(f"expected an iterable or None, got {iterable!r}")
 
-    def __add__(self: Self, other: "FifoQueue[T]", /) -> Self:
-        if isinstance(other, FifoQueue) and type(other).__add__ is Fifo.__add__:
+    def __add__(self: Self, other: "Deque[T]", /) -> Self:
+        if isinstance(other, Deque) and type(other).__add__ is Deque.__add__:
             result = type(self)()
-            result._reversed = self._forward[::-1]
-            result._reversed.extend(self._reversed)
-            result._forward = other._reversed[::-1]
-            result._forward.extend(other._forward)
+            result._front = self._back[::-1]
+            result._front.extend(self._front)
+            result._back = other._front[::-1]
+            result._back.extend(other._back)
             return result
         else:
             return NotImplemented
 
     def __contains__(self: Self, element: Any, /) -> bool:
-        return element in self._reversed or element in self._forward
+        return element in self._front or element in self._back
 
     def __deepcopy__(self: Self, /) -> Self:
         return type(self)(map(deepcopy, self))
@@ -61,13 +61,24 @@ class Deque(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
     def __delitem__(self: Self, index: Union[int, slice], /) -> None:
         if isinstance(index, slice):
             range_ = range(len(self))[index]
-            if range_.step < 0:
+            if len(range_) == 0:
+                return
+            elif len(range_) == len(self):
+                self.clear()
+                return
+            elif range_.step < 0:
                 range_ = range_[::-1]
             index = slice(range_.start, range_.stop, range_.step)
-            reversed = range(len(self._reversed))[::-1][index]
-            range_ = range_[len(reversed):]
-            del self._forward[range_.start - len(self._reversed) : range_.stop - len(self._reversed) : range_.step]
-            del self._reversed[reversed.start : reversed.stop : reversed.step]
+            if len(self._front) == 0:
+                del self._back[index]
+            else:
+                front = range(len(self._front))[::-1][index][::-1]
+                if len(front) < len(range_):
+                    start = range(len(self._front))[index][-1] + index.step - len(self._front)
+                    stop = index.stop - len(self._front)
+                    step = index.step
+                    del self._back[start : stop : step]
+                del self._front[front.start : front.stop : front.step]
         else:
             index = range(len(self))[index]
             if index == 0:
@@ -76,20 +87,20 @@ class Deque(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
             elif index + 1 == len(self):
                 self.pop()
                 return
-            elif len(self) < 32 or len(self._forward) < 2 * len(self._reversed) < 4 * len(self._forward):
+            elif len(self) < 32 or len(self._back) < 2 * len(self._front) < 4 * len(self._back):
                 pass
-            elif len(self._forward) > len(self._reversed):
-                diff = len(self._forward) - len(self._reversed)
-                self._reversed[:0] = self._forward[diff // 2::-1]
-                del self._forward[diff // 2::-1]
+            elif len(self._back) > len(self._front):
+                diff = len(self._back) - len(self._front)
+                self._front[:0] = self._back[diff // 2::-1]
+                del self._back[diff // 2::-1]
             else:
-                diff = len(self._reversed) - len(self._forward)
-                self._forward[:0] = self._reversed[diff // 2::-1]
-                del self._reversed[diff // 2::-1]
-            if index < len(self._reversed):
-                del self._reversed[~index]
+                diff = len(self._front) - len(self._back)
+                self._back[:0] = self._front[diff // 2::-1]
+                del self._front[diff // 2::-1]
+            if index < len(self._front):
+                del self._front[~index]
             else:
-                del self._forward[index - len(self._reversed)]
+                del self._back[index - len(self._front)]
 
     @overload
     def __getitem__(self: Self, index: int, /) -> T: ...
@@ -100,26 +111,48 @@ class Deque(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
     def __getitem__(self, index):
         if isinstance(index, slice):
             range_ = range(len(self))[index]
-            index = slice(range_.start, range_.stop, range_.step)
-            if range_.step < 0:
+            if len(range_) == 0:
+                return type(self)()
+            elif len(range_) == len(self):
+                if range_.step > 0:
+                    return self.copy()
+                else:
+                    result = self.copy()
+                    result.reverse()
+                    return result
+            is_reversed = range_.step < 0
+            if is_reversed:
                 range_ = range_[::-1]
-                reversed = range(len(self._reversed))[::-1][index][::-1]
-                range_ = range_[len(reversed):]
-                result = type(self)()
-                result._reversed = self._forward[range_.start - len(self._reversed) : range_.stop - len(self._reversed) : range_.step]
-                result._forward = self._reversed[reversed.start : reversed.stop : reversed.step]
+            result = type(self)()
+            index = slice(range_.start, range_.stop, range_.step)
+
+
+
+            if len(self._front) == 0:
+                if is_reversed:
+                    result._front = self._back[index]
+                else:
+                    result._back = self._back[index]
             else:
-                reversed = range(len(self._reversed))[::-1][index][::-1]
-                range_ = range_[len(reversed):]
-                result = type(self)()
-                result._forward = self._forward[range_.start - len(self._reversed) : range_.stop - len(self._reversed) : range_.step]
-                result._reversed = self._reversed[reversed.start : reversed.stop : reversed.step]
+                front = range(len(self._front))[::-1][index][::-1]
+                if len(front) < len(range_):
+                    start = range(len(self._front))[index][-1] + index.step - len(self._front)
+                    stop = index.stop - len(self._front)
+                    step = index.step
+                    if is_reversed:
+                        result._front = self._back[start : stop : step]
+                    else:
+                        result._back = self._back[start : stop : step]
+                if is_reversed:
+                    result._back = self._front[front.start : front.stop : front.step]
+                else:
+                    result._front = self._front[front.start : front.stop : front.step]
             return result
         index = range(len(self))[index]
-        if index < len(self._reversed):
-            return self._reversed[~index]
+        if index < len(self._front):
+            return self._front[~index]
         else:
-            return self._reversed[index - len(self._reversed)]
+            return self._back[index - len(self._front)]
 
     def __imul__(self: Self, other: int, /) -> Self:
         try:
@@ -130,16 +163,16 @@ class Deque(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
             self.clear()
         elif len(range_) == 1:
             pass
-        elif len(self._forward) > len(self._reversed):
-            len_ = len(self._forward)
-            self._forward.extend(reversed(self._reversed))
-            self._forward *= len(range_) - 1
-            self._forward.extend(islice(self._forward, len_))
+        elif len(self._back) > len(self._front):
+            len_ = len(self._back)
+            self._back.extend(reversed(self._front))
+            self._back *= len(range_) - 1
+            self._back.extend(islice(self._back, len_))
         else:
-            len_ = len(self._reversed)
-            self._reversed.extend(reversed(self._forward))
-            self._reversed *= len(range_) - 1
-            self._reversed.extend(islice(self._reversed, len_))
+            len_ = len(self._front)
+            self._front.extend(reversed(self._back))
+            self._front *= len(range_) - 1
+            self._front.extend(islice(self._front, len_))
         return self
 
     def __islice__(self: Self, start: Optional[int], stop: Optional[int], step: Optional[int], /) -> Iterator[T]:
@@ -156,10 +189,10 @@ class Deque(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
             return (self[i] for i in range_)
 
     def __iter__(self: Self, /) -> Iterator[T]:
-        return chain(reversed(self._reversed), self._forward)
+        return chain(reversed(self._front), self._back)
 
     def __len__(self: Self, /) -> int:
-        return len(self._reversed) + len(self._forward)
+        return len(self._front) + len(self._back)
 
     def __mul__(self: Self, other: int, /) -> Self:
         try:
@@ -172,7 +205,7 @@ class Deque(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
             return self.copy()
         else:
             result = self.copy()
-            result._reversed *= len(range_)
+            result._front *= len(range_)
             return result
 
     __rmul__ = __mul__
@@ -189,8 +222,8 @@ class Deque(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
         finally:
             reprs_seen.remove(id(self))
 
-    def __reversed__(self: Self, /) -> Iterator[T]:
-        return chain(reversed(self._forward), self._reversed)
+    def __front__(self: Self, /) -> Iterator[T]:
+        return chain(reversed(self._back), self._front)
 
     @overload
     def __setitem__(self: Self, index: int, element: T, /) -> None: ...
@@ -202,32 +235,32 @@ class Deque(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
         if isinstance(index, slice):
             raise NotImplementedError("__setitem__ is not implemented for deques")
         index = range(len(self))[index]
-        if index < len(self._reversed):
-            self._reversed[~index] = element
+        if index < len(self._front):
+            self._front[~index] = element
         else:
-            self._forward[index - len(self._reversed)] = element
+            self._back[index - len(self._front)] = element
 
     def append(self: Self, element: T, /) -> None:
-        self._forward.append(element)
+        self._back.append(element)
 
     def appendleft(self: Self, element: T, /) -> None:
-        self._reversed.append(element)
+        self._front.append(element)
 
     def clear(self: Self, /) -> None:
-        self._forward.clear()
-        self._reversed.clear()
+        self._back.clear()
+        self._front.clear()
 
     def copy(self: Self, /) -> None:
         result = type(self)()
-        result._reversed.extend(reversed(self._forward))
-        result._reversed.extend(self._reversed)
+        result._front.extend(reversed(self._back))
+        result._front.extend(self._front)
         return result
 
     def extend(self: Self, iterable: Iterable[T], /) -> None:
-        self._forward.extend(iterable)
+        self._back.extend(iterable)
 
     def extendleft(self: Self, iterable: Iterable[T], /) -> None:
-        self._reversed.extend(iterable)
+        self._front.extend(iterable)
 
     def index(self: Self, element: Any, start: int = 0, stop: Optional[int] = None, /) -> int:
         start = operator.index(start)
@@ -238,23 +271,25 @@ class Deque(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
         if index < 0:
             index += len(self)
         if index <= 0:
-            self._reversed.append(element)
+            self._front.append(element)
             return
         elif index >= len(self):
-            self._forward.append(element)
+            self._back.append(element)
             return
-        elif len(self) < 32 or len(self._forward) < 2 * len(self._reversed) < 4 * len(self._forward):
+        elif len(self) < 32 or len(self._back) < 2 * len(self._front) < 4 * len(self._back):
             pass
-        elif len(self._forward) > len(self._reversed):
-            diff = len(self._forward) - len(self._reversed)
-            self._reversed[:0] = self._forward[diff // 2::-1]
-            del self._forward[diff // 2::-1]
+        elif len(self._back) > len(self._front):
+            diff = len(self._back) - len(self._front)
+            self._front[:0] = self._back[diff // 2::-1]
+            del self._back[diff // 2::-1]
         else:
-            diff = len(self._reversed) - len(self._forward)
-            self._forward[:0] = self._reversed[diff // 2::-1]
-            del self._reversed[diff // 2::-1]
-        if index < len(self._reversed):
-            self._reversed.insert(len(self._reversed) - index, element)
+            diff = len(self._front) - len(self._back)
+            self._back[:0] = self._front[diff // 2::-1]
+            del self._front[diff // 2::-1]
+        if index < len(self._front):
+            self._front.insert(len(self._front) - index, element)
+        else:
+            self._back.insert(index - len(self._front), element)
 
     def peek(self: Self, /) -> T:
         if len(self._back) > 0:
@@ -262,7 +297,6 @@ class Deque(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
         elif len(self._front) > 0:
             return self._front[0]
         else:
-            self._forward.insert(index - len(self._reversed), element)
             raise IndexError("cannot peek from empty deque")
 
     def pop(self: Self, index: int = -1, /) -> T:
@@ -272,37 +306,37 @@ class Deque(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
         if index == 0:
             return self.popleft()
         elif index + 1 == len(self):
-            if len(self._forward) == 0:
-                self._forward = self._reversed[-len(self._reversed) // 4 :: -1]
-                del self._reversed[-len(self._reversed) // 4 :: -1]
-            return self._forward.pop()
+            if len(self._back) == 0:
+                self._back = self._front[-len(self._front) // 4 :: -1]
+                del self._front[-len(self._front) // 4 :: -1]
+            return self._back.pop()
         elif not 0 < index < len(self):
             raise IndexError("pop index out of range")
-        elif len(self) < 32 or len(self._forward) < 2 * len(self._reversed) < 4 * len(self._forward):
+        elif len(self) < 32 or len(self._back) < 2 * len(self._front) < 4 * len(self._back):
             pass
-        elif len(self._forward) > len(self._reversed):
-            diff = len(self._forward) - len(self._reversed)
-            self._reversed[:0] = self._forward[diff // 2 :: -1]
-            del self._forward[diff // 2 :: -1]
+        elif len(self._back) > len(self._front):
+            diff = len(self._back) - len(self._front)
+            self._front[:0] = self._back[diff // 2 :: -1]
+            del self._back[diff // 2 :: -1]
         else:
-            diff = len(self._reversed) - len(self._forward)
-            self._forward[:0] = self._reversed[diff // 2 :: -1]
-            del self._reversed[diff // 2 :: -1]
-        if index < len(self._reversed):
-            return self._reversed.pop(~index)
+            diff = len(self._front) - len(self._back)
+            self._back[:0] = self._front[diff // 2 :: -1]
+            del self._front[diff // 2 :: -1]
+        if index < len(self._front):
+            return self._front.pop(~index)
         else:
-            return self._forward.pop(index - len(self._reversed))
+            return self._back.pop(index - len(self._front))
 
     def popleft(self: Self, /) -> T:
         if len(self) == 0:
             raise IndexError("cannot pop from empty deque")
-        elif len(self._reversed) == 0:
-            self._reversed = self._forward[-len(self._forward) // 4 :: -1]
-            del self._forward[-len(self._forward) // 4 :: -1]
-        return self._reversed.pop()
+        elif len(self._front) == 0:
+            self._front = self._back[-len(self._back) // 4 :: -1]
+            del self._back[-len(self._back) // 4 :: -1]
+        return self._front.pop()
 
     def reverse(self: Self, /) -> None:
-        self._forward, self._reversed = self._reversed, self._forward
+        self._back, self._front = self._front, self._back
 
     def rotate(self: Self, n: int = 1, /) -> None:
         n = (-operator.index(n)) % len(self)
@@ -310,20 +344,20 @@ class Deque(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
             return
         elif n < len(self) - n:
             n = len(self) - n
-            self._reversed.extend(
-                self._forward.pop()
-                for _ in range(min(n, len(self._forward)))
+            self._front.extend(
+                self._back.pop()
+                for _ in range(min(n, len(self._back)))
             )
-            n -= len(self._forward)
+            n -= len(self._back)
             if n > 0:
-                self._reversed.extend(self._reversed[:n])
-                del self._reversed[:n]
+                self._front.extend(self._front[:n])
+                del self._front[:n]
         else:
-            self._forward.extend(
-                self._reversed.pop()
-                for _ in range(min(n, len(self._reversed)))
+            self._back.extend(
+                self._front.pop()
+                for _ in range(min(n, len(self._front)))
             )
-            n -= len(self._reversed)
+            n -= len(self._front)
             if n > 0:
-                self._forward.extend(self._forward[:n])
-                del self._forward[:n]
+                self._back.extend(self._back[:n])
+                del self._back[:n]
