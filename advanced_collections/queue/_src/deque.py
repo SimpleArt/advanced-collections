@@ -125,9 +125,6 @@ class Deque(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
                 range_ = range_[::-1]
             result = type(self)()
             index = slice(range_.start, range_.stop, range_.step)
-
-
-
             if len(self._front) == 0:
                 if is_reversed:
                     result._front = self._back[index]
@@ -300,9 +297,9 @@ class Deque(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
             raise IndexError("cannot peek from empty deque")
 
     def pop(self: Self, index: int = -1, /) -> T:
-        index = operator.index(index)
-        if index < 0:
-            index += len(self)
+        if isinstance(index, slice):
+            raise TypeError(f"could not interpret index as an integer, got {index!r}")
+        index = range(len(self))[index]
         if index == 0:
             return self.popleft()
         elif index + 1 == len(self):
