@@ -22,9 +22,7 @@ class AbstractQueue(QueueProtocol[T], ABC, Generic[T]):
 
     @abstractmethod
     def peek(self: Self, /) -> T:
-        item = self.pop()
-        self.append(item)
-        return item
+        raise NotImplementedError
 
     @abstractmethod
     def pop(self: Self, /) -> T:
