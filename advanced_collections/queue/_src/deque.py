@@ -219,7 +219,7 @@ class Deque(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
         finally:
             reprs_seen.remove(id(self))
 
-    def __front__(self: Self, /) -> Iterator[T]:
+    def __reversed__(self: Self, /) -> Iterator[T]:
         return chain(reversed(self._back), self._front)
 
     @overload
