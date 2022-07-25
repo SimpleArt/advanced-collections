@@ -1,5 +1,5 @@
 import operator
-from collections.abc import Iterable, Iterator, Reversible
+from collections.abc import Iterable, Iterator
 from copy import deepcopy
 from itertools import chain, islice
 from typing import Any, Generic, Optional, TypeVar, Union, overload
