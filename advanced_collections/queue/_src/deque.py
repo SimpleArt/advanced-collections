@@ -6,18 +6,20 @@ from typing import Any, Generic, Optional, TypeVar, Union, overload
 
 from advanced_collections._src.viewable_mutable_sequence import ViewableMutableSequence
 
+from .abc_queue import AbstractQueue
+
 __all__ = ["Deque"]
 
 T = TypeVar("T")
 
 Self = TypeVar("Self", bound="Deque")
 
-reprs_seen: set[int] = {0} - {0}
+reprs_seen: set[int] = set()
 
 
-class Deque(ViewableMutableSequence[T], Generic[T]):
     _forward: list[T]
     _reversed: list[T]
+class Deque(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
 
     __slots__ = {
         "_forward":
@@ -253,8 +255,15 @@ class Deque(ViewableMutableSequence[T], Generic[T]):
             del self._reversed[diff // 2::-1]
         if index < len(self._reversed):
             self._reversed.insert(len(self._reversed) - index, element)
+
+    def peek(self: Self, /) -> T:
+        if len(self._back) > 0:
+            return self._back[-1]
+        elif len(self._front) > 0:
+            return self._front[0]
         else:
             self._forward.insert(index - len(self._reversed), element)
+            raise IndexError("cannot peek from empty deque")
 
     def pop(self: Self, index: int = -1, /) -> T:
         index = operator.index(index)
