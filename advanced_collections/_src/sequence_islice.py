@@ -67,5 +67,11 @@ class SequenceIslice(ViewableSequence[T_co], Generic[T_co]):
     def __len__(self: Self, /) -> int:
         return len(range(len(self._sequence))[self._start:self._stop:self._step])
 
+    def __repr__(self: Self, /) -> str:
+        start = "" if self._start is None else repr(self._start)
+        stop = "" if self._stop is None else repr(self._stop)
+        step = "" if self._step is None else f":{self._step!r}"
+        return f"{self._sequence!r}[{start}:{stop}{step}]"
+
     def __reversed__(self: Self, /) -> Iterator[T_co]:
         return self.__islice__(None, None, -1)
