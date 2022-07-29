@@ -622,26 +622,40 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
     def extend(self: Self, iterable: Iterable[T], /) -> None:
         if not isinstance(iterable, Iterable):
             raise TypeError(f"extend expected iterable, got {iterable!r}")
-        if not isinstance(iterable, list):
-            iterable = [*iterable]
-        offset = 0
-        if len(iterable) == 0:
-            return
-        elif len(self._lens) == 1 and self._lens[0] < CHUNKSIZE:
-            offset = CHUNKSIZE - self._lens[0]
-            self._cache_chunk(0).extend(iterable[:offset])
-            self._len += len(self._cache_chunk(0)) - self._lens[0]
-            self._fenwick_update(0, len(self._cache_chunk(0)) - self._lens[0])
+        if isinstance(iterable, list):
+            if len(iterable) == 0:
+                return
+            elif len(self._lens) == 1 and self._lens[0] < CHUNKSIZE:
+                offset = CHUNKSIZE - self._lens[0]
+                self._cache_chunk(0).extend(iterable[:offset])
+                self._len += len(self._cache_chunk(0)) - self._lens[0]
+                self._fenwick_update(0, len(self._cache_chunk(0)) - self._lens[0])
+            else:
+                offset = 0
+            for i in range(offset, len(iterable), CHUNKSIZE):
+                self._free_cache()
+                filename = self._get_filename()
+                self._filenames.append(filename)
+                chunk = iterable[i : i + CHUNKSIZE]
+                self._cache[filename] = chunk
+                self._len += len(chunk)
+                self._fenwick_append(len(chunk))
         else:
-            offset = 0
-        for i in range(offset, len(iterable), CHUNKSIZE):
-            self._free_cache()
-            filename = self._get_filename()
-            self._filenames.append(filename)
-            chunk = iterable[i : i + CHUNKSIZE]
-            self._cache[filename] = chunk
-            self._len += len(chunk)
-            self._fenwick_append(len(chunk))
+            iterator = iter(iterable)
+            if len(self._lens) == 1 and self._lens[0] < CHUNKSIZE:
+                offset = CHUNKSIZE - self._lens[0]
+                self._cache_chunk(0).extend(islice(iterator, offset))
+                self._len += len(self._cache_chunk(0)) - self._lens[0]
+                self._fenwick_update(0, len(self._cache_chunk(0)) - self._lens[0])
+            else:
+                offset = 0
+            for chunk in iter(lambda: [*islice(iterator, CHUNKSIZE)], []):
+                self._free_cache()
+                filename = self._get_filename()
+                self._filenames.append(filename)
+                self._cache[filename] = chunk
+                self._len += len(chunk)
+                self._fenwick_append(len(chunk))
 
     def insert(self: Self, index: int, value: T, /) -> None:
         index = operator.index(index)
