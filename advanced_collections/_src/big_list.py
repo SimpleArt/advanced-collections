@@ -565,10 +565,13 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
 
     def _get_filename(self: Self, /) -> str:
         path = self._path / "counter.txt"
-        uid = int(path.read_text())
-        path.write_text(str(uid + 1))
-        (self._path / f"{uid}.txt").touch()
-        with open(self._path / f"{uid}.txt", mode="wb") as file:
+        with open(path, mode="rb") as file:
+            uid = pickle.load(file)
+        with open(path, mode="wb") as file:
+            pickle.dump(uid + 1, file)
+        path = self._path / f"{uid}.txt"
+        path.touch()
+        with open(path, mode="wb") as file:
             pickle.dump([], file)
         return f"{uid}.txt"
 
@@ -600,7 +603,8 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
         path = self._path
         for filename in self._filenames:
             (path / filename).unlink()
-        (path / "counter.txt").write_text("0")
+        with open(path / "counter.txt", mode="wb") as file:
+            pickle.dump(0, file)
         with open(path / "filenames.txt", mode="wb") as file:
             pickle.dump([], file)
         with open(path / "lens.txt", mode="wb") as file:
