@@ -150,12 +150,7 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
         exc_traceback: Optional[TracebackType],
         /,
     ) -> None:
-        with open(self._path / "filenames.txt", mode="wb") as file:
-            pickle.dump(self._filenames, file)
-        with open(self._path / "lens.txt", mode="wb") as file:
-            pickle.dump(self._lens, file)
-        for filename, segment in self._cache.items():
-            self._commit_chunk(filename, segment)
+        self.commit()
 
     @overload
     def __getitem__(self: Self, index: int, /) -> T: ...
@@ -614,6 +609,14 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
         self._filenames.clear()
         self._len = 0
         self._lens.clear()
+
+    def commit(self: Self, /) -> None:
+        with open(self._path / "filenames.txt", mode="wb") as file:
+            pickle.dump(self._filenames, file)
+        with open(self._path / "lens.txt", mode="wb") as file:
+            pickle.dump(self._lens, file)
+        for filename, segment in self._cache.items():
+            self._commit_chunk(filename, segment)
 
     def extend(self: Self, iterable: Iterable[T], /) -> None:
         if not isinstance(iterable, Iterable):
