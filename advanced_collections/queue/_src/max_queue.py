@@ -1,4 +1,4 @@
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Iterator, MutableSequence
 from copy import deepcopy
 from operator import length_hint
 from typing import Any, Optional, TypeVar
@@ -12,7 +12,7 @@ T = TypeVar("T", bound=SupportsRichHashableComparison)
 try:
     from heapq import _siftdown_max as siftdown
 except ImportError:
-    def siftdown(heap: list[Any], startpos: int, pos: int, /) -> None:
+    def siftdown(heap: MutableSequence[Any], startpos: int, pos: int, /) -> None:
         newitem = heap[pos]
         # Follow the path to the root, moving parents down until
         # finding a place newitem fits.
@@ -29,7 +29,7 @@ except ImportError:
 try:
     from heapq import _siftup_max as siftup
 except ImportError:
-    def siftup(heap: list[Any], pos: int, /) -> None:
+    def siftup(heap: MutableSequence[Any], pos: int, /) -> None:
         endpos = len(heap)
         startpos = pos
         newitem = heap[pos]
@@ -52,14 +52,14 @@ except ImportError:
 try:
     from heapq import _heapify_max as heapify
 except ImportError:
-    def heapify(heap: list[Any], /) -> None:
+    def heapify(heap: MutableSequence[Any], /) -> None:
         for i in reversed(range(len(heap) // 2)):
             siftup(heap, i)
 
 try:
     from heapq import _heappop_max as heappop
 except ImportError:
-    def heappop(heap: list[T], /) -> T:
+    def heappop(heap: MutableSequence[T], /) -> T:
         if len(heap) > 1:
             return heapreplace(heap, heap.pop())
         else:
@@ -68,17 +68,17 @@ except ImportError:
 try:
     from heapq import _heapreplace_max as heapreplace
 except ImportError:
-    def heapreplace(heap: list[T], item: T, /) -> T:
+    def heapreplace(heap: MutableSequence[T], item: T, /) -> T:
         returnitem = heap[0]
         heap[0] = item
         siftup(heap, 0)
         return returnitem
 
-def heappush(heap: list[T], item: T, /) -> None:
+def heappush(heap: MutableSequence[T], item: T, /) -> None:
     heap.append(item)
     siftdown(heap, 0, len(heap) - 1)
 
-def heappushpop(heap: list[T], item: T, /) -> T:
+def heappushpop(heap: MutableSequence[T], item: T, /) -> T:
     if len(heap) > 0 and heap[0] < item:
         item, heap[0] = heap[0], item
         siftup(heap, 0)

@@ -1,8 +1,8 @@
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Iterator
 from copy import deepcopy
 from heapq import heapify, heappop, heappush, heappushpop, heapreplace
 from operator import length_hint
-from typing import Optional, TypeVar
+from typing import Any, Optional, TypeVar
 
 from advanced_collections._src.comparable import SupportsRichHashableComparison
 

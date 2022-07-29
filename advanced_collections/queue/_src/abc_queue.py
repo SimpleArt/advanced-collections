@@ -1,5 +1,6 @@
 import operator
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, Iterator
 from typing import Any, Generic, TypeVar
 
 from .queue_protocol import QueueProtocol
