@@ -62,14 +62,6 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
         self._lens = ensure_file(self._path / "lens.txt", [])
         self._len = sum(self._lens)
 
-    def __del__(self: Self, /) -> None:
-        with open(self._path / "filenames.txt", mode="wb") as file:
-            pickle.dump(self._filenames, file)
-        with open(self._path / "lens.txt", mode="wb") as file:
-            pickle.dump(self._lens, file)
-        for filename, segment in self._cache.items():
-            self._commit_chunk(filename, segment)
-
     def __delitem__(self: Self, index: Union[int, slice], /) -> None:
         if isinstance(index, slice):
             len_ = self._len
