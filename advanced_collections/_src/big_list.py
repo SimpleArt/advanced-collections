@@ -59,7 +59,7 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
         self._cache = OrderedDict()
         ensure_file(self._path / "counter.txt", 0)
         self._filenames = ensure_file(self._path / "filenames.txt", [])
-        self._lens = ensure_file(self._path / "filenames.txt", [])
+        self._lens = ensure_file(self._path / "lens.txt", [])
         self._len = sum(self._lens)
 
     def __del__(self: Self, /) -> None:
