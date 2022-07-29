@@ -38,7 +38,7 @@ class LifoQueue(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
         else:
             raise TypeError(f"expected an iterable or None, got {iterable!r}")
 
-    def __add__(self: Self, other: "LifoQueue[T]", /) -> Self:
+    def __add__(self: Self, other: AbstractQueue[T], /) -> Self:
         if isinstance(other, LifoQueue) and type(other).__add__ is Lifo.__add__:
             result = type(self)()
             result._front = self._back[::-1]
@@ -52,11 +52,11 @@ class LifoQueue(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
     def __contains__(self: Self, element: Any, /) -> bool:
         return element in self._back or element in self._front
 
-    def __deepcopy__(self: Self, /) -> Self:
-        return type(self)(map(deepcopy, self))
-
     def __copy__(self: Self, /) -> Self:
         return self.copy()
+
+    def __deepcopy__(self: Self, /) -> Self:
+        return type(self)(map(deepcopy, self))
 
     def __delitem__(self: Self, index: Union[int, slice], /) -> None:
         if isinstance(index, slice):
@@ -211,8 +211,6 @@ class LifoQueue(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
             result._front *= len(range_)
             return result
 
-    __rmul__ = __mul__
-
     def __repr__(self: Self, /) -> str:
         if id(self) in reprs_seen:
             return "..."
@@ -236,7 +234,7 @@ class LifoQueue(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
 
     def __setitem__(self, index, element, /):
         if isinstance(index, slice):
-            raise NotImplementedError("__setitem__ is not implemented for deques")
+            raise NotImplementedError("__setitem__ is not implemented for queues")
         index = range(len(self))[index]
         if index < len(self._front):
             self._front[~index] = element
@@ -248,6 +246,8 @@ class LifoQueue(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
 
     def appendleft(self: Self, element: T, /) -> None:
         self._front.append(element)
+
+    appendright = append
 
     def clear(self: Self, /) -> None:
         self._back.clear()
@@ -264,6 +264,8 @@ class LifoQueue(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
 
     def extendleft(self: Self, iterable: Iterable[T], /) -> None:
         self._front.extend(iterable)
+
+    extendright = extend
 
     def index(self: Self, element: Any, start: int = 0, stop: Optional[int] = None, /) -> int:
         start = operator.index(start)
@@ -300,7 +302,17 @@ class LifoQueue(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
         elif len(self._front) > 0:
             return self._front[0]
         else:
-            raise IndexError("cannot peek from empty deque")
+            raise IndexError("cannot peek from empty queue")
+
+    def peekleft(self: Self, /) -> T:
+        if len(self._front) > 0:
+            return self._front[-1]
+        elif len(self._back) > 0:
+            return self._back[0]
+        else:
+            raise IndexError("cannot peek from empty queue")
+
+    peekright = peek
 
     def pop(self: Self, index: int = -1, /) -> T:
         if isinstance(index, slice):
@@ -309,10 +321,7 @@ class LifoQueue(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
         if index == 0:
             return self.popleft()
         elif index + 1 == len(self):
-            if len(self._back) == 0:
-                self._back = self._front[-len(self._front) // 4 :: -1]
-                del self._front[-len(self._front) // 4 :: -1]
-            return self._back.pop()
+            return self.popright()
         elif not 0 < index < len(self):
             raise IndexError("pop index out of range")
         elif len(self) < 32 or len(self._back) < 2 * len(self._front) < 4 * len(self._back):
@@ -332,11 +341,37 @@ class LifoQueue(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
 
     def popleft(self: Self, /) -> T:
         if len(self) == 0:
-            raise IndexError("cannot pop from empty deque")
+            raise IndexError("cannot pop from empty queue")
         elif len(self._front) == 0:
             self._front = self._back[-len(self._back) // 4 :: -1]
             del self._back[-len(self._back) // 4 :: -1]
         return self._front.pop()
+
+    def popright(self: Self, /) -> T:
+        if len(self._back) == 0:
+            if len(self._front) == 0:
+                raise IndexError("cannot pop from empty queue")
+            self._back = self._front[-len(self._front) // 4 :: -1]
+            del self._front[-len(self._front) // 4 :: -1]
+        return self._back.pop()
+
+    push = append
+
+    def pushpop(self: Self, element: T, /) -> T:
+        return element
+
+    put = append
+
+    def replace(self: Self, element: T, /) -> T:
+        if len(self._back) > 0:
+            result = self._back[-1]
+            self._back[-1] = element
+        elif len(self._front) > 0:
+            result = self._front[0]
+            self._front[0] = element
+        else:
+            raise IndexError("cannot replace top element from empty queue")
+        return result
 
     def reverse(self: Self, /) -> None:
         self._back, self._front = self._front, self._back

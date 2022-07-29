@@ -41,7 +41,7 @@ class FifoQueue(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
         else:
             raise TypeError(f"expected an iterable or None, got {iterable!r}")
 
-    def __add__(self: Self, other: "FifoQueue[T]", /) -> Self:
+    def __add__(self: Self, other: AbstractQueue[T], /) -> Self:
         if isinstance(other, FifoQueue) and type(other).__add__ is Fifo.__add__:
             result = type(self)()
             result._front = self._back[::-1]
@@ -55,11 +55,11 @@ class FifoQueue(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
     def __contains__(self: Self, element: Any, /) -> bool:
         return element in self._front or element in self._back
 
-    def __deepcopy__(self: Self, /) -> Self:
-        return type(self)(map(deepcopy, self))
-
     def __copy__(self: Self, /) -> Self:
         return self.copy()
+
+    def __deepcopy__(self: Self, /) -> Self:
+        return type(self)(map(deepcopy, self))
 
     def __delitem__(self: Self, index: Union[int, slice], /) -> None:
         if isinstance(index, slice):
@@ -214,8 +214,6 @@ class FifoQueue(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
             result._front *= len(range_)
             return result
 
-    __rmul__ = __mul__
-
     def __repr__(self: Self, /) -> str:
         if id(self) in reprs_seen:
             return "..."
@@ -239,7 +237,7 @@ class FifoQueue(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
 
     def __setitem__(self, index, element, /):
         if isinstance(index, slice):
-            raise NotImplementedError("__setitem__ is not implemented for deques")
+            raise NotImplementedError("__setitem__ is not implemented for queues")
         index = range(len(self))[index]
         if index < len(self._front):
             self._front[~index] = element
@@ -251,6 +249,8 @@ class FifoQueue(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
 
     def appendleft(self: Self, element: T, /) -> None:
         self._front.append(element)
+
+    appendright = append
 
     def clear(self: Self, /) -> None:
         self._back.clear()
@@ -272,6 +272,8 @@ class FifoQueue(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
 
     def extendleft(self: Self, iterable: Iterable[T], /) -> None:
         self._front.extend(iterable)
+
+    extendright = extend
 
     def index(self: Self, element: Any, start: int = 0, stop: Optional[int] = None, /) -> int:
         start = operator.index(start)
@@ -310,15 +312,22 @@ class FifoQueue(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
         else:
             raise IndexError("cannot peek from empty queue")
 
+    peekleft = peek
+
+    def peekright(self: Self, /) -> T:
+        if len(self._back) > 0:
+            return self._back[-1]
+        elif len(self._front) > 0:
+            return self._front[0]
+        else:
+            raise IndexError("cannot peek from empty queue")
+
     def pop(self: Self, index: int = 0, /) -> T:
         if isinstance(index, slice):
             raise TypeError(f"could not interpret index as an integer, got {index!r}")
         index = range(len(self))[index]
         if index == 0:
-            if len(self._front) == 0:
-                self.reverse()
-                self._front.reverse()
-            return self._front.pop()
+            return self.popleft()
         elif index + 1 == len(self):
             return self.popright()
         elif not 0 < index < len(self):
@@ -338,16 +347,26 @@ class FifoQueue(AbstractQueue[T], ViewableMutableSequence[T], Generic[T]):
         else:
             return self._back.pop(index - len(self._front))
 
+    def popleft(self: Self, /) -> T:
+        if len(self._front) == 0:
+            if len(self._back) == 0:
+                raise IndexError("cannot pop from empty queue")
+            self.reverse()
+            self._front.reverse()
+        return self._front.pop()
+
     def popright(self: Self, /) -> T:
         if len(self._back) > 0:
             return self._back.pop()
         elif len(self._front) == 0:
-            raise IndexError("cannot peek from empty queue")
+            raise IndexError("cannot pop from empty queue")
         elif len(self._front) < 4:
             return self._front.pop(0)
         else:
             self._back = self._front[len(self._front) // 4 :: -1]
             return self._back.pop()
+
+    push = put = append
 
     def reverse(self: Self, /) -> None:
         self._back, self._front = self._front, self._back
