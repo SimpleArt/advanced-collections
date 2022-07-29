@@ -9,7 +9,7 @@ from advanced_collections._src.comparable import SupportsRichHashableComparison
 from .abc_queue import AbstractQueue
 
 T = TypeVar("T", bound=SupportsRichHashableComparison)
-Self = TypeVar("Self", "MinPriorityQueue")
+Self = TypeVar("Self", bound="MinPriorityQueue")
 
 reprs_seen: set[int] = set()
 

@@ -84,7 +84,7 @@ def heappushpop(heap: MutableSequence[T], item: T, /) -> T:
         siftup(heap, 0)
     return item
 
-Self = TypeVar("Self", "MaxPriorityQueue")
+Self = TypeVar("Self", bound="MaxPriorityQueue")
 
 reprs_seen: set[int] = set()
 
