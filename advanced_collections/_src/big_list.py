@@ -650,8 +650,9 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
             i = len(self._lens)
             self._len += len(iterable) - offset
             self._lens.extend(CHUNKSIZE for _ in range((len(iterable) - offset) // CHUNKSIZE))
-            if (len(iterable) - offset) % CHUNKSIZE != 0:
-                self._lens.append((len(iterable) - offset) % CHUNKSIZE)
+            self._lens.append((len(iterable) - offset) % CHUNKSIZE)
+            if self._lens[-1] == 0:
+                del self._lens[-1]
             fenwick = self._fenwick
             if len(self._lens) > i or fenwick is None:
                 pass
@@ -659,7 +660,7 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
                 self._fenwick = None
             else:
                 fenwick.extend(CHUNKSIZE for _ in range((len(iterable) - offset) // CHUNKSIZE))
-                if (len(iterable) - offset) % CHUNKSIZE != 0:
+                if len(fenwick) == len(self._lens):
                     fenwick.append((len(iterable) - offset) % CHUNKSIZE)
                 for i in range(i, len(fenwick)):
                     j = i & -i
