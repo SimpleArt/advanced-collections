@@ -625,9 +625,11 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
             self._commit_chunk(filename, segment)
 
     def extend(self: Self, iterable: Iterable[T], /) -> None:
+        filenames = self._filenames
+        path = self._path
         if not isinstance(iterable, Iterable):
             raise TypeError(f"extend expected iterable, got {iterable!r}")
-        if isinstance(iterable, list):
+        elif isinstance(iterable, list):
             if len(iterable) == 0:
                 return
             elif len(self._lens) == 1 and self._lens[0] < CHUNKSIZE:
@@ -638,29 +640,72 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
             else:
                 offset = 0
             for i in range(offset, len(iterable), CHUNKSIZE):
-                self._free_cache()
                 filename = self._get_filename()
-                self._filenames.append(filename)
-                chunk = iterable[i : i + CHUNKSIZE]
-                self._cache[filename] = chunk
+                with open(path / filename, mode="wb") as file:
+                    pickle.dump(iterable[i : i + CHUNKSIZE], file)
+                filenames.append(filename)
                 self._len += len(chunk)
-                self._fenwick_append(len(chunk))
+            if len(iterable) == offset:
+                return
+            i = len(self._lens)
+            self._len += len(iterable) - offset
+            self._lens.extend(CHUNKSIZE for _ in range((len(iterable) - offset) // CHUNKSIZE))
+            if (len(iterable) - offset) % CHUNKSIZE != 0:
+                self._lens.append((len(iterable) - offset) % CHUNKSIZE)
+            fenwick = self._fenwick
+            if len(self._lens) > i or fenwick is None:
+                pass
+            elif segments > len(fenwick).bit_length():
+                self._fenwick = None
+            else:
+                fenwick.extend(CHUNKSIZE for _ in range((len(iterable) - offset) // CHUNKSIZE))
+                if (len(iterable) - offset) % CHUNKSIZE != 0:
+                    fenwick.append((len(iterable) - offset) % CHUNKSIZE)
+                for i in range(i, len(fenwick)):
+                    j = i & -i
+                    while j > 1:
+                        j //= 2
+                        fenwick[i] += fenwick[i - j]
         else:
             iterator = iter(iterable)
             if len(self._lens) == 1 and self._lens[0] < CHUNKSIZE:
-                offset = CHUNKSIZE - self._lens[0]
-                self._cache_chunk(0).extend(islice(iterator, offset))
+                self._cache_chunk(0).extend(islice(iterator, CHUNKSIZE - self._lens[0]))
                 self._len += len(self._cache_chunk(0)) - self._lens[0]
                 self._fenwick_update(0, len(self._cache_chunk(0)) - self._lens[0])
-            else:
-                offset = 0
-            for chunk in iter(lambda: [*islice(iterator, CHUNKSIZE)], []):
-                self._free_cache()
-                filename = self._get_filename()
-                self._filenames.append(filename)
-                self._cache[filename] = chunk
-                self._len += len(chunk)
-                self._fenwick_append(len(chunk))
+            chunk = []
+            segments = 0
+            try:
+                while True:
+                    chunk = [*islice(iterator, CHUNKSIZE)]
+                    if not chunk:
+                        break
+                    filename = self._get_filename()
+                    with open(path / filename, mode="wb") as file:
+                        pickle.dump(chunk, file)
+                    filenames.append(filename)
+                    if len(chunk) < CHUNKSIZE:
+                        break
+                    segments += 1
+            finally:
+                i = len(self._lens)
+                self._len += segments * CHUNKSIZE + len(chunk)
+                self._lens.extend(CHUNKSIZE for _ in range(segments))
+                if len(chunk) > 0:
+                    self._lens.append(len(chunk))
+                fenwick = self._fenwick
+                if len(self._lens) > i or fenwick is None:
+                    pass
+                elif segments > len(fenwick).bit_length():
+                    self._fenwick = None
+                else:
+                    fenwick.extend(CHUNKSIZE for _ in range(segments))
+                    if len(chunk) > 0:
+                        fenwick.append(len(chunk))
+                    for i in range(i, len(fenwick)):
+                        j = i & -i
+                        while j > 1:
+                            j //= 2
+                            fenwick[i] += fenwick[i - j]
 
     def insert(self: Self, index: int, value: T, /) -> None:
         index = operator.index(index)
