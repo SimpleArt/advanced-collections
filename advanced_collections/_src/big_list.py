@@ -171,6 +171,9 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
             i, j = self._fenwick_index(index)
             return self._cache_chunk(i)[j]
 
+    def __getstate__(self: Self, /) -> Path:
+        return self._path
+
     def __islice(self: Self, start: int, stop: int, step: int, /) -> Iterator[T]:
         f_start = self._fenwick_index(start)
         f_stop = self._fenwick_index(stop)
@@ -341,6 +344,9 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
         else:
             i, j = self._fenwick_index(index)
             self._cache_chunk(i)[j] = value
+
+    def __setstate__(self: Self, path: Path, /) -> None:
+        type(self).__init__(self, path)
 
     def _balance(self: Self, index: int, /) -> None:
         lens = self._lens

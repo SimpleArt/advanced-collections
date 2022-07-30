@@ -123,6 +123,9 @@ class BigDict(MutableMapping[KT, VT], Generic[KT, VT]):
             raise KeyError(key)
         return result
 
+    def __getstate__(self: Self, /) -> Path:
+        return self._path
+
     def __iter__(self: Self, /) -> Iterator[KT]:
         return chain.from_iterable(
             self._cache_chunk(i)
@@ -158,6 +161,9 @@ class BigDict(MutableMapping[KT, VT], Generic[KT, VT]):
         self._len += len(chunk) - len_
         if (hkey, key) < self._mins[index]:
             self._mins[index] = (hkey, key)
+
+    def __setstate__(self: Self, path: Path, /) -> None:
+        type(self).__init__(self, path)
 
     def _balance(self: Self, index: int, /) -> None:
         lens = self._lens
