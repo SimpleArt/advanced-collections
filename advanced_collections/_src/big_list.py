@@ -16,7 +16,10 @@ ET = TypeVar("ET", bound=BaseException)
 Self = TypeVar("Self", bound="BigList")
 T = TypeVar("T")
 
-CHUNKSIZE = 4096
+CHUNKSIZE = 8192
+CHUNKSIZE_EXTENDED = 12288
+
+assert CHUNKSIZE * 3 // 2 == CHUNKSIZE_EXTENDED
 
 def ensure_file(path: Path, default: T) -> T:
     if not path.exists():
@@ -389,7 +392,7 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
                     self._lens.insert(2, len(chunk))
                 self._fenwick_update(0, len(self._cache_chunk(0)) - self._lens[0])
                 self._fenwick_update(1, len(self._cache_chunk(1)) - self._lens[1])
-            elif CHUNKSIZE // 2 < lens[0] < CHUNKSIZE * 2 and 3 * CHUNKSIZE // 2 < lens[0] + lens[1] < 3 * CHUNKSIZE:
+            elif CHUNKSIZE // 2 < lens[0] < CHUNKSIZE * 2 and CHUNKSIZE_EXTENDED < lens[0] + lens[1] < 3 * CHUNKSIZE:
                 pass
             elif lens[0] > lens[1]:
                 diff = lens[0] - lens[1]
@@ -422,7 +425,7 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
                 self._fenwick_update(-2, len(self._cache_chunk(-2)) - self._lens[-2])
                 self._fenwick_update(-1, len(self._cache_chunk(-1)) - self._lens[-1])
                 self._fenwick_append(len(chunk))
-            elif CHUNKSIZE // 2 < lens[-1] < CHUNKSIZE * 2 and 3 * CHUNKSIZE // 2 < lens[-1] + lens[-2] < 3 * CHUNKSIZE:
+            elif CHUNKSIZE // 2 < lens[-1] < CHUNKSIZE * 2 and CHUNKSIZE_EXTENDED < lens[-1] + lens[-2] < 3 * CHUNKSIZE:
                 pass
             elif lens[-1] < lens[-2]:
                 diff = lens[-2] - lens[-1]
@@ -437,7 +440,7 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
                 self._fenwick_update(-1, len(self._cache_chunk(-1)) - lens[-1])
                 self._fenwick_update(-2, len(self._cache_chunk(-2)) - lens[-2])
         else:
-            if lens[index - 1] + lens[index] + lens[index + 1] < 3 * CHUNKSIZE // 2:
+            if lens[index - 1] + lens[index] + lens[index + 1] < CHUNKSIZE_EXTENDED:
                 chunk = [
                     *self._cache_chunk(index - 1),
                     *self._cache_chunk(index),
@@ -632,25 +635,25 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
         elif isinstance(iterable, list):
             if len(iterable) == 0:
                 return
-            elif len(self._lens) == 1 and self._lens[0] < CHUNKSIZE:
-                offset = CHUNKSIZE - self._lens[0]
+            elif len(self._lens) == 1 and self._lens[0] < CHUNKSIZE_EXTENDED:
+                offset = CHUNKSIZE_EXTENDED - self._lens[0]
                 self._cache_chunk(0).extend(iterable[:offset])
                 self._len += len(self._cache_chunk(0)) - self._lens[0]
                 self._fenwick_update(0, len(self._cache_chunk(0)) - self._lens[0])
             else:
                 offset = 0
-            for i in range(offset, len(iterable), CHUNKSIZE):
+            for i in range(offset, len(iterable), CHUNKSIZE_EXTENDED):
                 filename = self._get_filename()
                 with open(path / filename, mode="wb") as file:
-                    pickle.dump(iterable[i : i + CHUNKSIZE], file)
+                    pickle.dump(iterable[i : i + CHUNKSIZE_EXTENDED], file)
                 filenames.append(filename)
                 self._len += len(chunk)
             if len(iterable) == offset:
                 return
             i = len(self._lens)
             self._len += len(iterable) - offset
-            self._lens.extend(CHUNKSIZE for _ in range((len(iterable) - offset) // CHUNKSIZE))
-            self._lens.append((len(iterable) - offset) % CHUNKSIZE)
+            self._lens.extend(CHUNKSIZE_EXTENDED for _ in range((len(iterable) - offset) // CHUNKSIZE_EXTENDED))
+            self._lens.append((len(iterable) - offset) % CHUNKSIZE_EXTENDED)
             if self._lens[-1] == 0:
                 del self._lens[-1]
             fenwick = self._fenwick
@@ -659,9 +662,9 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
             elif segments > len(fenwick).bit_length():
                 self._fenwick = None
             else:
-                fenwick.extend(CHUNKSIZE for _ in range((len(iterable) - offset) // CHUNKSIZE))
+                fenwick.extend(CHUNKSIZE_EXTENDED for _ in range((len(iterable) - offset) // CHUNKSIZE_EXTENDED))
                 if len(fenwick) == len(self._lens):
-                    fenwick.append((len(iterable) - offset) % CHUNKSIZE)
+                    fenwick.append((len(iterable) - offset) % CHUNKSIZE_EXTENDED)
                 for i in range(i, len(fenwick)):
                     j = i & -i
                     while j > 1:
@@ -669,28 +672,28 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
                         fenwick[i] += fenwick[i - j]
         else:
             iterator = iter(iterable)
-            if len(self._lens) == 1 and self._lens[0] < CHUNKSIZE:
-                self._cache_chunk(0).extend(islice(iterator, CHUNKSIZE - self._lens[0]))
+            if len(self._lens) == 1 and self._lens[0] < CHUNKSIZE_EXTENDED:
+                self._cache_chunk(0).extend(islice(iterator, CHUNKSIZE_EXTENDED - self._lens[0]))
                 self._len += len(self._cache_chunk(0)) - self._lens[0]
                 self._fenwick_update(0, len(self._cache_chunk(0)) - self._lens[0])
             chunk = []
             segments = 0
             try:
                 while True:
-                    chunk = [*islice(iterator, CHUNKSIZE)]
+                    chunk = [*islice(iterator, CHUNKSIZE_EXTENDED)]
                     if not chunk:
                         break
                     filename = self._get_filename()
                     with open(path / filename, mode="wb") as file:
                         pickle.dump(chunk, file)
                     filenames.append(filename)
-                    if len(chunk) < CHUNKSIZE:
+                    if len(chunk) < CHUNKSIZE_EXTENDED:
                         break
                     segments += 1
             finally:
                 i = len(self._lens)
-                self._len += segments * CHUNKSIZE + len(chunk)
-                self._lens.extend(CHUNKSIZE for _ in range(segments))
+                self._len += segments * CHUNKSIZE_EXTENDED + len(chunk)
+                self._lens.extend(CHUNKSIZE_EXTENDED for _ in range(segments))
                 if len(chunk) > 0:
                     self._lens.append(len(chunk))
                 fenwick = self._fenwick
@@ -699,7 +702,7 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
                 elif segments > len(fenwick).bit_length():
                     self._fenwick = None
                 else:
-                    fenwick.extend(CHUNKSIZE for _ in range(segments))
+                    fenwick.extend(CHUNKSIZE_EXTENDED for _ in range(segments))
                     if len(chunk) > 0:
                         fenwick.append(len(chunk))
                     for i in range(i, len(fenwick)):
