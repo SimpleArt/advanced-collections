@@ -1,7 +1,8 @@
+import asyncio
 import operator
 import pickle
 from collections import OrderedDict
-from collections.abc import Iterable, Iterator
+from collections.abc import AsyncIterable, Iterable, Iterator
 from itertools import chain, islice
 from pathlib import Path
 from types import TracebackType
@@ -588,6 +589,65 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
                 segment = pickle.load(file)
         self._del_chunk(index)
         return segment
+
+    async def aextend(self: Self, iterable: AsyncIterable[T], /) -> None:
+        filenames = self._filenames
+        path = self._path
+        if not isinstance(iterable, AsyncIterable):
+            raise TypeError(f"extend expected async iterable, got {iterable!r}")
+        iterator = aiter(iterable)
+        if len(self._lens) == 1 and self._lens[0] < CHUNKSIZE_EXTENDED:
+            i = CHUNKSIZE_EXTENDED - self._lens[0]
+            chunk = self._cache_chunk(0)
+            async for element in iterator:
+                chunk.append(element)
+                i -= 1
+                if not i:
+                    break
+            self._len += len(self._cache_chunk(0)) - self._lens[0]
+            self._fenwick_update(0, len(self._cache_chunk(0)) - self._lens[0])
+        chunk = []
+        segments = 0
+        try:
+            while True:
+                i = CHUNKSIZE_EXTENDED
+                chunk = []
+                async for element in iterator:
+                    chunk.append(element)
+                    i -= CHUNKSIZE_EXTENDED
+                    if not i:
+                        break
+                if not chunk:
+                    break
+                filename = self._get_filename()
+                with open(path / filename, mode="wb") as file:
+                    pickle.dump(chunk, file)
+                filenames.append(filename)
+                if len(chunk) < CHUNKSIZE_EXTENDED:
+                    break
+                segments += 1
+                await asyncio.sleep(0)
+        finally:
+            i = len(self._lens)
+            self._len += segments * CHUNKSIZE_EXTENDED + len(chunk)
+            self._lens.extend(CHUNKSIZE_EXTENDED for _ in range(segments))
+            if len(chunk) > 0:
+                self._lens.append(len(chunk))
+            fenwick = self._fenwick
+            if len(self._lens) > i or fenwick is None:
+                pass
+            elif segments > len(fenwick).bit_length():
+                self._fenwick = None
+            else:
+                fenwick.extend(CHUNKSIZE_EXTENDED for _ in range(segments))
+                if len(chunk) > 0:
+                    fenwick.append(len(chunk))
+                for i in range(i, len(fenwick)):
+                    j = i & -i
+                    while j > 1:
+                        j //= 2
+                        fenwick[i] += fenwick[i - j]
+                    await asyncio.sleep(0)
 
     def append(self: Self, value: T, /) -> None:
         if self._len == 0:
