@@ -6,16 +6,15 @@ from collections.abc import AsyncIterable, Iterable, Iterator
 from itertools import chain, islice
 from pathlib import Path
 from types import TracebackType
-from typing import Any, Generic, Optional, SupportsIndex, Type, TypeVar, Union, overload
+from typing import Any, Final, Generic, Optional, SupportsIndex, Type, TypeVar, Union, overload
 
 from .mutable_sequence_islice import MutableSequenceIslice
 from .viewable_mutable_sequence import ViewableMutableSequence
 
-__all__ = ["BigList"]
-
 ET = TypeVar("ET", bound=BaseException)
-Self = TypeVar("Self", bound="BigList")
 T = TypeVar("T")
+
+Self = TypeVar("Self", bound="BigList")
 
 CHUNKSIZE = 8192
 CHUNKSIZE_EXTENDED = 12288
@@ -32,12 +31,14 @@ def ensure_file(path: Path, default: T) -> T:
 
 
 class BigList(ViewableMutableSequence[T], Generic[T]):
-    _cache: OrderedDict[str, list[T]]
+    _cache: Final[OrderedDict[str, list[T]]]
     _fenwick: Optional[list[int]]
-    _filenames: list[str]
+    _filenames: Final[list[Path]]
     _len: int
-    _lens: list[int]
-    _path: Path
+    _lens: Final[list[int]]
+    _path_count: int
+    _path_index: int
+    _paths: Final[tuple[Path, ...]]
 
     __slots__ = {
         "_cache":
@@ -50,20 +51,36 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
             "The total length of the list.",
         "_lens":
             "The length of each segment.",
-        "_path":
-            "The folder containing all of the files.",
+        "_path_index":
+            "The current folder that files are being saved to.",
+        "_path_count":
+            "The current amount of times the folder has last been saved to.",
+        "_paths":
+            "The folders containing all of the files.",
     }
 
-    def __init__(self: Self, path: Union[Path, str], /) -> None:
-        self._path = Path(path)
-        self._path.mkdir(exist_ok=True)
-        self._path /= "list"
-        self._path.mkdir(exist_ok=True)
-        self._fenwick = None
+    def __init__(self: Self, path: Union[Path, str], *paths: Union[Path, str]) -> None:
+        paths = {Path(path).resolve() for path in paths}
+        paths.add(Path(path).resolve())
+        paths = sorted(paths)
+        for path in reversed(paths):
+            path.mkdir(exist_ok=True)
+            (path / "list").mkdir(exist_ok=True)
+            if ensure_file(path / "list" / "paths.txt", paths) != paths:
+                raise ValueError(
+                    "the provided path is already a part of a separate BigList for\n"
+                    + f"    {type(self).__name__}(\n        "
+                    + ",\n        ".join(map(str, ensure_file(path / "list" / "paths.txt", [])))
+                    + ",\n    )"
+                )
+            ensure_file(path / "list" / "counter.txt", 0)
+        self._filenames = ensure_file(path / "list" / "filenames.txt", [])
+        self._lens = ensure_file(path / "list" / "lens.txt", [])
+        self._path_count = ensure_file(path / "list" / "count.txt", 0)
+        self._path_index = ensure_file(path / "list" / "index.txt", 0)
+        self._paths = (*paths,)
         self._cache = OrderedDict()
-        ensure_file(self._path / "counter.txt", 0)
-        self._filenames = ensure_file(self._path / "filenames.txt", [])
-        self._lens = ensure_file(self._path / "lens.txt", [])
+        self._fenwick = None
         self._len = sum(self._lens)
 
     def __delitem__(self: Self, index: Union[int, slice], /) -> None:
@@ -109,7 +126,7 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
                     self._balance(start[0])
                     return
                 for i in reversed(range(start[0] + 1, stop[0])):
-                    (self._path / self._filenames[i]).unlink()
+                    self._filenames[i].unlink()
                     if self._filenames[i] in self._cache:
                         del self._cache[self._filenames[i]]
                 del self._filenames[start[0] + 1 : stop[0]]
@@ -176,7 +193,7 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
             return self._cache_chunk(i)[j]
 
     def __getstate__(self: Self, /) -> Path:
-        return self._path
+        return self._paths
 
     def __islice(self: Self, start: int, stop: int, step: int, /) -> Iterator[T]:
         f_start = self._fenwick_index(start)
@@ -323,7 +340,8 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
         return self._len
 
     def __repr__(self: Self, /) -> str:
-        return f"{type(self).__name__}({self._path.parent})"
+        paths = ", ".join([f"'{path}'" for path in self._paths])
+        return f"{type(self).__name__}({paths})"
 
     def __reversed__(self: Self, /) -> Iterator[T]:
         return chain.from_iterable(
@@ -349,8 +367,8 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
             i, j = self._fenwick_index(index)
             self._cache_chunk(i)[j] = value
 
-    def __setstate__(self: Self, path: Path, /) -> None:
-        type(self).__init__(self, path)
+    def __setstate__(self: Self, paths: tuple[Path, ...], /) -> None:
+        type(self).__init__(self, *paths)
 
     def _balance(self: Self, index: int, /) -> None:
         lens = self._lens
@@ -491,18 +509,18 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
             self._cache.move_to_end(filename)
         else:
             self._free_cache()
-            with open(self._path / filename, mode="rb") as file:
+            with open(filename, mode="rb") as file:
                 self._cache[filename] = pickle.load(file)
         return self._cache[filename]
 
-    def _commit_chunk(self: Self, filename: str, segment: list[T], /) -> None:
-        with open(self._path / filename, mode="wb") as file:
+    def _commit_chunk(self: Self, filename: Path, segment: list[T], /) -> None:
+        with open(filename, mode="wb") as file:
             pickle.dump(segment, file)
 
     def _del_chunk(self: Self, index: int, /) -> None:
         index = range(len(self._filenames))[index]
         filename = self._filenames.pop(index)
-        (self._path / filename).unlink()
+        filename.unlink()
         self._len -= self._lens.pop(index)
         if self._fenwick is None or index < len(self._filenames):
             self._fenwick = None
@@ -569,30 +587,32 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
             self._commit_chunk(*self._cache.popitem(last=False))
 
     def _get_filename(self: Self, /) -> str:
-        path = self._path / "counter.txt"
-        with open(path, mode="rb") as file:
+        path = self._paths[self._path_index]
+        with open(path / "list" / "counter.txt", mode="rb") as file:
             uid = pickle.load(file)
-        with open(path, mode="wb") as file:
+        with open(path / "list" / "counter.txt", mode="wb") as file:
             pickle.dump(uid + 1, file)
-        path = self._path / f"{uid}.txt"
-        path.touch()
-        with open(path, mode="wb") as file:
+        with open(path / "list" / f"{uid}.txt", mode="wb") as file:
             pickle.dump([], file)
-        return f"{uid}.txt"
+        self._path_count += 1
+        if self._path_count ** 2 > len(self._filenames):
+            self._path_count = 0
+            self._path_index += 1
+            self._path_index %= len(self._paths)
+        return path / "list" / f"{uid}.txt"
 
     def _pop_chunk(self: Self, index: int, /) -> list[T]:
         filename = self._filenames[index]
         if filename in self._cache:
             segment = self._cache.pop(filename)
         else:
-            with open(self._path / filename, mode="rb") as file:
+            with open(filename, mode="rb") as file:
                 segment = pickle.load(file)
         self._del_chunk(index)
         return segment
 
     async def aextend(self: Self, iterable: AsyncIterable[T], /) -> None:
         filenames = self._filenames
-        path = self._path
         if not isinstance(iterable, AsyncIterable):
             raise TypeError(f"extend expected async iterable, got {iterable!r}")
         iterator = aiter(iterable)
@@ -620,7 +640,7 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
                 if not chunk:
                     break
                 filename = self._get_filename()
-                with open(path / filename, mode="wb") as file:
+                with open(filename, mode="wb") as file:
                     pickle.dump(chunk, file)
                 filenames.append(filename)
                 if len(chunk) < CHUNKSIZE_EXTENDED:
@@ -664,32 +684,42 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
             self._balance(-1)
 
     def clear(self: Self, /) -> None:
-        path = self._path
         for filename in self._filenames:
-            (path / filename).unlink()
-        with open(path / "counter.txt", mode="wb") as file:
+            filename.unlink()
+        for path in reversed(self._paths):
+            with open(path / "list" / "counter.txt", mode="wb") as file:
+                pickle.dump(0, file)
+        with open(path / "list" / "filenames.txt", mode="wb") as file:
+            pickle.dump([], file)
+        with open(path / "list" / "lens.txt", mode="wb") as file:
+            pickle.dump([], file)
+        with open(path / "list" / "count.txt", mode="wb") as file:
             pickle.dump(0, file)
-        with open(path / "filenames.txt", mode="wb") as file:
-            pickle.dump([], file)
-        with open(path / "lens.txt", mode="wb") as file:
-            pickle.dump([], file)
+        with open(path / "list" / "index.txt", mode="wb") as file:
+            pickle.dump(0, file)
         self._cache.clear()
         self._fenwick = None
         self._filenames.clear()
         self._len = 0
         self._lens.clear()
+        self._path_count = 0
+        self._path_index = 0
 
     def commit(self: Self, /) -> None:
-        with open(self._path / "filenames.txt", mode="wb") as file:
+        path = self._paths[0]
+        with open(path / "list" / "filenames.txt", mode="wb") as file:
             pickle.dump(self._filenames, file)
-        with open(self._path / "lens.txt", mode="wb") as file:
+        with open(path / "list" / "count.txt", mode="wb") as file:
+            pickle.dump(self._path_count, file)
+        with open(path / "list" / "index.txt", mode="wb") as file:
+            pickle.dump(self._path_index, file)
+        with open(path / "list" / "lens.txt", mode="wb") as file:
             pickle.dump(self._lens, file)
         for filename, segment in self._cache.items():
             self._commit_chunk(filename, segment)
 
     def extend(self: Self, iterable: Iterable[T], /) -> None:
         filenames = self._filenames
-        path = self._path
         if not isinstance(iterable, Iterable):
             raise TypeError(f"extend expected iterable, got {iterable!r}")
         elif isinstance(iterable, list):
@@ -704,7 +734,7 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
                 offset = 0
             for i in range(offset, len(iterable), CHUNKSIZE_EXTENDED):
                 filename = self._get_filename()
-                with open(path / filename, mode="wb") as file:
+                with open(filename, mode="wb") as file:
                     pickle.dump(iterable[i : i + CHUNKSIZE_EXTENDED], file)
                 filenames.append(filename)
                 self._len += len(chunk)
@@ -744,7 +774,7 @@ class BigList(ViewableMutableSequence[T], Generic[T]):
                     if not chunk:
                         break
                     filename = self._get_filename()
-                    with open(path / filename, mode="wb") as file:
+                    with open(filename, mode="wb") as file:
                         pickle.dump(chunk, file)
                     filenames.append(filename)
                     if len(chunk) < CHUNKSIZE_EXTENDED:
