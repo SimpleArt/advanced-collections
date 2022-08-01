@@ -3,13 +3,12 @@ from typing import Any, Generic, TypeVar
 
 from .comparable import SupportsRichHashableComparison
 
-__all__ = ["KeyComparable"]
-
-Self = TypeVar("Self", bound="KeyComparable")
 T_co = TypeVar("T_co", bound=SupportsRichHashableComparison, covariant=True)
 
+Self = TypeVar("Self", bound="KeyComparable")
 
-class KeyComparable(SupportsRichHashableComparison, Generic[T_co]):
+
+class KeyComparable(ABC, Generic[T_co]):
 
     __slots__ = ()
 

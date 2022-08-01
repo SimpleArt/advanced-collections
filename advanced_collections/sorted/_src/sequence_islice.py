@@ -1,17 +1,16 @@
 import operator
+from collections.abc import Iterable
 from typing import Generic, Optional, Type, TypeVar, overload
 
-import advanced_collections.sorted
+import advanced_collections.sorted._src as src
 from advanced_collections._src.comparable import SupportsRichHashableComparison
 from advanced_collections._src.sequence_islice import SequenceIslice
-from .list import SortedList
 from .sequence import SortedSequence
 
-__all__ = ["SortedSequenceIslice"]
-
-Self = TypeVar("Self", bound="SortedSequenceIslice")
 T = TypeVar("T", bound=SupportsRichHashableComparison)
 T_co = TypeVar("T_co", bound=SupportsRichHashableComparison)
+
+Self = TypeVar("Self", bound="SortedSequenceIslice")
 
 
 class SortedSequenceIslice(SequenceIslice[T_co], SortedSequence[T_co], Generic[T_co]):
@@ -39,12 +38,12 @@ class SortedSequenceIslice(SequenceIslice[T_co], SortedSequence[T_co], Generic[T
         self._step = step
 
     @classmethod
-    def __from_iterable__(cls: Type[Self], iterable: Iterable[T], /) -> SortedList[T]:
-        return SortedList(iterable)
+    def __from_iterable__(cls: Type[Self], iterable: Iterable[T], /) -> "src.list.SortedList[T]":
+        return src.list.SortedList(iterable)
 
     @classmethod
-    def __from_sorted__(cls: Type[Self], iterable: Iterable[T], /) -> SortedList[T]:
-        return SortedList.__from_sorted__(iterable)
+    def __from_sorted__(cls: Type[Self], iterable: Iterable[T], /) -> "src.list.SortedList[T]":
+        return src.list.SortedList.__from_sorted__(iterable)
 
     @overload
     def __getitem__(self: Self, index: int, /) -> T_co: ...

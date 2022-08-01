@@ -1,31 +1,25 @@
-from __future__ import annotations
-import sys
-from typing import Generic, TypeVar, Union
+from typing import Final, Generic, TypeVar, Union
 
-if sys.version_info < (3, 9):
-    from typing import Tuple as tuple
-
-import advanced_collections.sorted
+import advanced_collections.sorted._src as src
 from advanced_collections._src.comparable import SupportsRichHashableComparison
 
-__all__ = ["SortedSequenceBetweenProxy"]
+T_co = TypeVar("T_co", bound=SupportsRichHashableComparison, covariant=True)
 
 Self = TypeVar("Self", bound="SortedSequenceBetweenProxy")
-T_co = TypeVar("T_co", bound=SupportsRichHashableComparison, covariant=True)
 
 
 class SortedSequenceBetweenProxy(Generic[T_co]):
-    _sequence: advanced_collections.sorted.SortedSequence[T_co]
+    _sequence: Final["src.sequence.SortedSequence[T_co]"]
 
     __slots__ = {
         "_sequence":
             "A sorted sequence instance.",
     }
 
-    def __init__(self: Self, sequence: advanced_collections.sorted.SortedSequence[T_co], /) -> None:
+    def __init__(self: Self, sequence: "src.sequence.SortedSequence[T_co]", /) -> None:
         self._sequence = sequence
 
-    def __getitem__(self: Self, index: Union[slice, tuple[slice, slice]], /) -> advanced_collections.sorted.SortedSequenceBetween[T_co]:
+    def __getitem__(self: Self, index: Union[slice, tuple[slice, slice]], /) -> "src.sequence_between.SortedSequenceBetween[T_co]":
         if isinstance(index, slice):
             if index.step is not None:
                 raise TypeError("expected sorted_sequence[start:stop, inclusive:exclusive], got a step argument")

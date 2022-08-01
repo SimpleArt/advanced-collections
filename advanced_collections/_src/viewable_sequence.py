@@ -1,19 +1,12 @@
-from __future__ import annotations
-import sys
 from abc import ABC, abstractmethod
+from collections.abc import Iterator, Sequence
 from typing import Generic, Optional, TypeVar, overload
-
-if sys.version_info < (3, 9):
-    from typing import Iterator, Sequence
-else:
-    from collections.abc import Iterator, Sequence
 
 from .sequence_islice_proxy import SequenceIsliceProxy
 
-__all__ = ["ViewableSequence"]
+T_co = TypeVar("T_co", covariant=True)
 
 Self = TypeVar("Self", bound="ViewableSequence")
-T_co = TypeVar("T_co", covariant=True)
 
 
 class ViewableSequence(Sequence[T_co], ABC, Generic[T_co]):
@@ -24,7 +17,7 @@ class ViewableSequence(Sequence[T_co], ABC, Generic[T_co]):
     def __getitem__(self: Self, index: int, /) -> T_co: ...
 
     @overload
-    def __getitem__(self: Self, index: slice, /) -> ViewableSequence[T_co]: ...
+    def __getitem__(self: Self, index: slice, /) -> "ViewableSequence[T_co]": ...
 
     @abstractmethod
     def __getitem__(self, index, /):

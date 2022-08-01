@@ -1,33 +1,26 @@
-from __future__ import annotations
-import sys
-from typing import Generic, TypeVar
+from collections.abc import Iterator
+from typing import Final, Generic, TypeVar
 
-if sys.version_info < (3, 9):
-    from typing import Iterator
-else:
-    from collections.abc import Iterator
+import advanced_collections._src as src
 
-import advanced_collections
-
-__all__ = ["SequenceIsliceProxy"]
+T_co = TypeVar("T_co", covariant=True)
 
 Self = TypeVar("Self", bound="SequenceIsliceProxy")
-T_co = TypeVar("T_co", covariant=True)
 
 
 class SequenceIsliceProxy(Generic[T_co]):
-    _sequence: advanced_collections._src.viewable_sequence.ViewableSequence[T_co]
+    _sequence: Final["src.viewable_sequence.ViewableSequence[T_co]"]
 
     __slots__ = {
         "_sequence":
             "The viewable sequence.",
     }
 
-    def __init__(self: Self, sequence: advanced_collections._src.viewable_sequence.ViewableSequence[T_co], /) -> None:
-        assert isinstance(sequence, advanced_collections._src.viewable_sequence.ViewableSequence)
+    def __init__(self: Self, sequence: "src.viewable_sequence.ViewableSequence[T_co]", /) -> None:
+        assert isinstance(sequence, src.viewable_sequence.ViewableSequence)
         self._sequence = sequence
 
-    def __getitem__(self: Self, index: slice, /) -> advanced_collections._src.sequence_islice.SequenceIslice[T_co]:
+    def __getitem__(self: Self, index: slice, /) -> "src.sequence_islice.SequenceIslice[T_co]":
         if not isinstance(index, slice):
             raise TypeError(f"expected sequence.islice[start:stop:step], got sequence.islice[{index!r}]")
         # Cast integer-like indices to integers.
@@ -36,4 +29,4 @@ class SequenceIsliceProxy(Generic[T_co]):
         start = None if index.start is None else range_.start
         stop = None if index.stop is None else range_.stop
         step = None if index.step is None else range_.step
-        return advanced_collections._src.sequence_islice.SequenceIslice(self._sequence, start, stop, step)
+        return src.sequence_islice.SequenceIslice(self._sequence, start, stop, step)

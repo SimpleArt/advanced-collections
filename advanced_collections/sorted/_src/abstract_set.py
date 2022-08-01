@@ -1,30 +1,23 @@
-from __future__ import annotations
 import copy
-import sys
 from abc import ABC, abstractmethod
 from collections import OrderedDict
+from collections.abc import Set as AbstractSet, Iterable, Iterator, Mapping, Sized
 from heapq import merge
 from inspect import isabstract
 from itertools import chain, groupby, islice
 from operator import length_hint
 from typing import Any, Generic, Type, TypeVar, Union, overload
 
-if sys.version_info < (3, 9):
-    from typing import AbstractSet, Iterable, Iterator, Mapping, Sized
-else:
-    from collections.abc import Set as AbstractSet, Iterable, Iterator, Mapping, Sized
-
 from advanced_collections._src.comparable import SupportsRichHashableComparison
 from .collection import SortedCollection
 from .mapping import SortedMapping
 from .sequence import SortedSequence
 
-__all__ = ["SortedAbstractSet"]
-
-Self = TypeVar("Self", bound="SortedAbstractSet")
 S = TypeVar("S")
 T = TypeVar("T", bound=SupportsRichHashableComparison)
 T_co = TypeVar("T_co", bound=SupportsRichHashableComparison, covariant=True)
+
+Self = TypeVar("Self", bound="SortedAbstractSet")
 
 
 class SortedAbstractSet(SortedSequence[T_co], AbstractSet[T_co], ABC, Generic[T_co]):
@@ -32,7 +25,7 @@ class SortedAbstractSet(SortedSequence[T_co], AbstractSet[T_co], ABC, Generic[T_
     __slots__ = ()
 
     @overload
-    def __add__(self: Self, other: SortedAbstractSet[T], /) -> SortedAbstractSet[Union[T, T_co]]: ...
+    def __add__(self: Self, other: "SortedAbstractSet[T]", /) -> "SortedAbstractSet[Union[T, T_co]]": ...
 
     @overload
     def __add__(self: Self, other: AbstractSet[S], /) -> AbstractSet[Union[S, T_co]]: ...
@@ -43,7 +36,7 @@ class SortedAbstractSet(SortedSequence[T_co], AbstractSet[T_co], ABC, Generic[T_
     def __radd__(self: Self, other: AbstractSet[S], /) -> AbstractSet[Union[S, T_co]]:
         return type(self).__ror__(self, other)
 
-    def __and__(self: Self, other: AbstractSet[Any], /) -> SortedAbstractSet[T_co]:
+    def __and__(self: Self, other: AbstractSet[Any], /) -> "SortedAbstractSet[T_co]":
         # Find common non-abstract parent class.
         for cls in type(self).mro():
             if isinstance(other, cls) and issubclass(cls, SortedAbstractSet) and not isabstract(cls):
@@ -59,7 +52,7 @@ class SortedAbstractSet(SortedSequence[T_co], AbstractSet[T_co], ABC, Generic[T_
                     )
         return NotImplemented
 
-    def __rand__(self: Self, other: AbstractSet[Any], /) -> SortedAbstractSet[T_co]:
+    def __rand__(self: Self, other: AbstractSet[Any], /) -> "SortedAbstractSet[T_co]":
         return NotImplemented
 
     def __copy__(self: Self, /) -> Self:
@@ -72,7 +65,7 @@ class SortedAbstractSet(SortedSequence[T_co], AbstractSet[T_co], ABC, Generic[T_
         return SortedSequence.__eq__(self, other)
 
     @classmethod
-    def __from_iterable__(cls: Type[Self], iterable: Iterable[T_co], /) -> SortedAbstractSet[T_co]:
+    def __from_iterable__(cls: Type[Self], iterable: Iterable[T_co], /) -> "SortedAbstractSet[T_co]":
         if isinstance(iterable, (SortedAbstractSet, SortedMapping)):
             pass
         elif isinstance(iterable, SortedCollection):
@@ -85,7 +78,7 @@ class SortedAbstractSet(SortedSequence[T_co], AbstractSet[T_co], ABC, Generic[T_
 
     @classmethod
     @abstractmethod
-    def __from_sorted__(cls: Type[Self], iterable: Iterable[T_co], /) -> SortedAbstractSet[T_co]:
+    def __from_sorted__(cls: Type[Self], iterable: Iterable[T_co], /) -> "SortedAbstractSet[T_co]":
         raise NotImplementedError("__from_sorted__ is a required method for sorted abstract sets")
 
     def __ge__(self: Self, other: Any, /) -> bool:
@@ -150,7 +143,7 @@ class SortedAbstractSet(SortedSequence[T_co], AbstractSet[T_co], ABC, Generic[T_
         return SortedSequence.__ne__(self, other)
 
     @overload
-    def __or__(self: Self, other: SortedAbstractSet[T], /) -> SortedAbstractSet[Union[T, T_co]]: ...
+    def __or__(self: Self, other: "SortedAbstractSet[T]", /) -> "SortedAbstractSet[Union[T, T_co]]": ...
 
     @overload
     def __or__(self: Self, other: AbstractSet[S], /) -> AbstractSet[Union[S, T_co]]: ...
@@ -168,7 +161,7 @@ class SortedAbstractSet(SortedSequence[T_co], AbstractSet[T_co], ABC, Generic[T_
     def __reversed__(self: Self, /) -> Iterator[T_co]:
         return reversed(self._sequence)
 
-    def __sub__(self: Self, other: AbstractSet[Any], /) -> SortedAbstractSet[T_co]:
+    def __sub__(self: Self, other: AbstractSet[Any], /) -> "SortedAbstractSet[T_co]":
         # Find common non-abstract parent class.
         for cls in type(self).mro():
             if isinstance(other, cls) and issubclass(cls, SortedAbstractSet) and not isabstract(cls):
@@ -179,7 +172,7 @@ class SortedAbstractSet(SortedSequence[T_co], AbstractSet[T_co], ABC, Generic[T_
         return NotImplemented
 
     @overload
-    def __xor__(self: Self, other: SortedAbstractSet[T], /) -> SortedAbstractSet[Union[T, T_co]]: ...
+    def __xor__(self: Self, other: "SortedAbstractSet[T]", /) -> "SortedAbstractSet[Union[T, T_co]]": ...
 
     @overload
     def __xor__(self: Self, other: AbstractSet[S], /) -> AbstractSet[Union[S, T_co]]: ...
@@ -201,7 +194,7 @@ class SortedAbstractSet(SortedSequence[T_co], AbstractSet[T_co], ABC, Generic[T_
     def copy(self: Self, /) -> Self:
         return copy.copy(self)
 
-    def difference(self: Self, /, *iterables: Iterable[T], /) -> SortedAbstractSet[T_co]:
+    def difference(self: Self, /, *iterables: Iterable[T], /) -> "SortedAbstractSet[T_co]":
         if len(iterables) == 0:
             return self.copy()
         s = set()
@@ -220,7 +213,7 @@ class SortedAbstractSet(SortedSequence[T_co], AbstractSet[T_co], ABC, Generic[T_
             if not any((x in s) for s in sets)
         )
 
-    def intersection(self: Self, /, *iterables: Iterable[T], /) -> SortedAbstractSet[T_co]:
+    def intersection(self: Self, /, *iterables: Iterable[T], /) -> "SortedAbstractSet[T_co]":
         if len(iterables) == 0:
             return self.copy()
         others = []
@@ -317,7 +310,7 @@ class SortedAbstractSet(SortedSequence[T_co], AbstractSet[T_co], ABC, Generic[T_
         else:
             raise TypeError(f"issuperset expected an iterable, got {iterable!r}")
 
-    def symmetric_difference(self: Self, /, *iterables: Iterable[T], /) -> SortedAbstractSet[Union[T, T_co]]:
+    def symmetric_difference(self: Self, /, *iterables: Iterable[T], /) -> "SortedAbstractSet[Union[T, T_co]]":
         if len(iterables) == 0:
             return self.copy()
         sets = []
@@ -340,7 +333,7 @@ class SortedAbstractSet(SortedSequence[T_co], AbstractSet[T_co], ABC, Generic[T_
             if (sum(1 for _ in group) + sum(1 for s in sets if key in s)) % 2 == 1
         )
 
-    def union(self: Self, /, *iterables: Iterable[T], /) -> SortedAbstractSet[Union[T, T_co]]:
+    def union(self: Self, /, *iterables: Iterable[T], /) -> "SortedAbstractSet[Union[T, T_co]]":
         if len(iterables) == 0:
             return self.copy()
         others = []

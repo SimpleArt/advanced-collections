@@ -1,10 +1,5 @@
-import sys
+from collections.abc import Hashable
 from typing import Any, Protocol, TypeVar, runtime_checkable
-
-if sys.version_info < (3, 9):
-    from typing import Hashable
-else:
-    from collections.abc import Hashable
 
 Self = TypeVar("Self", bound="SupportsRichHashableComparison")
 

@@ -1,30 +1,23 @@
-from __future__ import annotations
 import operator
-import sys
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, MutableSequence
 from typing import Any, Generic, Type, TypeVar, overload
-
-if sys.version_info < (3, 9):
-    from typing import Iterable, MutableSequence
-else:
-    from collections.abc import Iterable, MutableSequence
 
 from advanced_collections._src.comparable import SupportsRichHashableComparison
 from .sequence import SortedSequence
 from .mutable_sequence_between_proxy import SortedMutableSequenceBetweenProxy
 from .mutable_sequence_islice_proxy import SortedMutableSequenceIsliceProxy
 
-__all__ = ["SortedMutableSequence"]
+T = TypeVar("T", bound=SupportsRichHashableComparison)
 
 Self = TypeVar("Self", bound="SortedMutableSequence")
-T = TypeVar("T", bound=SupportsRichHashableComparison)
 
 
 class SortedMutableSequence(SortedSequence[T], MutableSequence[T], ABC, Generic[T]):
 
     __slots__ = ()
 
-    def __add__(self: Self, other: SortedSequence[T], /) -> SortedMutableSequence[T]:
+    def __add__(self: Self, other: SortedSequence[T], /) -> "SortedMutableSequence[T]":
         # Find common parent class.
         for cls in type(self).mro():
             if isinstance(other, cls) and issubclass(cls, SortedMutableSequence):
@@ -81,7 +74,7 @@ class SortedMutableSequence(SortedSequence[T], MutableSequence[T], ABC, Generic[
             )
         return self
 
-    def __mul__(self: Self, other: int, /) -> SortedMutableSequence[T]:
+    def __mul__(self: Self, other: int, /) -> "SortedMutableSequence[T]":
         try:
             range_ = range(other)
         except TypeError:

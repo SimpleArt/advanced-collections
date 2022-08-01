@@ -6,11 +6,9 @@ from heapq import nlargest, nsmallest
 from itertools import chain, islice
 from pathlib import Path
 from types import TracebackType
-from typing import Generic, Optional, Type, TypeVar, Union
+from typing import Final, Generic, Optional, Type, TypeVar, Union
 
 from .comparable import SupportsRichHashableComparison
-
-__all__ = ["BigDict"]
 
 ET = TypeVar("ET", bound=BaseException)
 KT = TypeVar("KT", bound=SupportsRichHashableComparison)
@@ -30,12 +28,12 @@ def ensure_file(path: Path, default: VT) -> VT:
 
 
 class BigDict(MutableMapping[KT, VT], Generic[KT, VT]):
-    _cache: OrderedDict[str, dict[KT, VT]]
-    _filenames: list[str]
+    _cache: Final[OrderedDict[str, dict[KT, VT]]]
+    _filenames: Final[list[str]]
     _len: int
-    _lens: list[int]
-    _mins: list[tuple[int, KT]]
-    _path: Path
+    _lens: Final[list[int]]
+    _mins: Final[list[tuple[int, KT]]]
+    _path: Final[Path]
 
     __slots__ = {
         "_cache":

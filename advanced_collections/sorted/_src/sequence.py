@@ -1,44 +1,37 @@
-from __future__ import annotations
 import copy
 import operator
-import sys
 from abc import ABC, abstractmethod
 from bisect import bisect_left, bisect_right
+from collections.abc import Iterable, Iterator, Sequence
 from heapq import merge
 from inspect import isabstract
 from itertools import islice
 from typing import Any, Generic, Literal, Optional, SupportsIndex, Type, TypeVar, overload
-
-if sys.version_info < (3, 9):
-    from typing import Iterable, Iterator
-else:
-    from collections.abc import Iterable, Iterator
 
 from advanced_collections._src.comparable import SupportsRichHashableComparison
 from advanced_collections._src.viewable_sequence import ViewableSequence
 from .collection import SortedCollection
 from .sequence_between_proxy import SortedSequenceBetweenProxy
 
-__all__ = ["SortedSequence"]
-
-Self = TypeVar("Self", bound="SortedSequence")
 T_co = TypeVar("T_co", bound=SupportsRichHashableComparison, covariant=True)
 
-reprs_seen = set()
+Self = TypeVar("Self", bound="SortedSequence")
+
+reprs_seen: set[int] = set()
 
 
-class SortedSequence(ViewableSequence[T_co], SortedCollection[T_co, T_co], ABC, Generic[T_co]):
+class SortedSequence(ViewableSequence[T_co], ABC, Generic[T_co]):
 
     __slots__ = ()
 
-    def __add__(self: Self, other: SortedSequence[T_co], /) -> SortedSequence[T_co]:
+    def __add__(self: Self, other: "SortedSequence[T_co]", /) -> "SortedSequence[T_co]":
         # Find common non-abstract parent class.
         for cls in type(self).mro():
             if isinstance(other, cls) and issubclass(cls, SortedSequence) and not isabstract(cls):
                 return cls.__from_sorted__(merge(self, other))
         return NotImplemented
 
-    def __radd__(self: Self, other: Sequence[T_co], /) -> SortedSequence[T_co]:
+    def __radd__(self: Self, other: Sequence[T_co], /) -> "SortedSequence[T_co]":
         return NotImplemented
 
     def __between_iter__(self: Self, start: Optional[T_co], stop: Optional[T_co], inclusive: bool, exclusive: bool, /) -> Iterator[T_co]:
@@ -74,7 +67,7 @@ class SortedSequence(ViewableSequence[T_co], SortedCollection[T_co, T_co], ABC, 
         return type(self).__from_sorted__(map(copy.deepcopy, self))
 
     @classmethod
-    def __from_iterable__(cls: Type[Self], iterable: Iterable[T_co], /) -> SortedSequence[T_co]:
+    def __from_iterable__(cls: Type[Self], iterable: Iterable[T_co], /) -> "SortedSequence[T_co]":
         if isinstance(iterable, Iterable):
             return cls.from_sorted(sorted(iterable))
         else:
@@ -82,20 +75,20 @@ class SortedSequence(ViewableSequence[T_co], SortedCollection[T_co, T_co], ABC, 
 
     @classmethod
     @abstractmethod
-    def __from_sorted__(cls: Type[Self], iterable: Iterable[T_co], /) -> SortedSequence[T_co]:
+    def __from_sorted__(cls: Type[Self], iterable: Iterable[T_co], /) -> "SortedSequence[T_co]":
         raise NotImplementedError(f"__from_sorted__ is a required method for sorted sequences")
 
     @overload
     def __getitem__(self: Self, index: int, /) -> T_co: ...
 
     @overload
-    def __getitem__(self: Self, index: slice, /) -> SortedSequence[T_co]: ...
+    def __getitem__(self: Self, index: slice, /) -> "SortedSequence[T_co]": ...
 
     @abstractmethod
     def __getitem__(self, index, /):
         raise NotImplementedError(f"__getitem__ is a required method for sorted sequences")
 
-    def __mul__(self: Self, other: int, /) -> SortedSequence[T_co]:
+    def __mul__(self: Self, other: int, /) -> "SortedSequence[T_co]":
         try:
             range_ = range(other)
         except TypeError:

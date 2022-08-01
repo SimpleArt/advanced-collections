@@ -1,42 +1,28 @@
-from __future__ import annotations
 import operator
-import sys
 from bisect import bisect, insort
+from collections.abc import Iterable, Iterator, Sequence, Sized
 from itertools import chain, islice
 from operator import length_hint
-from typing import Any, Generic, Literal, Optional, Protocol, SupportsIndex, Type, TypeVar, overload, runtime_checkable
-
-if sys.version_info < (3, 9):
-    from typing import Iterable, Iterator, Sequence, Sized, List as list, Tuple as tuple
-else:
-    from collections.abc import Iterable, Iterator, Sequence, Sized
+from typing import Any, Final, Generic, Literal, Optional, Type, TypeVar, overload
 
 from advanced_collections._src.comparable import SupportsRichHashableComparison
 from .collection import SortedCollection
 from .mutable_sequence import SortedMutableSequence
 
-__all__ = ["SortedList"]
-
-Self = TypeVar("Self", bound="SortedList")
 T = TypeVar("T", bound=SupportsRichHashableComparison)
 
-reprs_seen = {0} - {0}
+Self = TypeVar("Self", bound="SortedList")
+
+reprs_seen: set[int] = set()
 
 CHUNKSIZE: int = 1024
 
 
-@runtime_checkable
-class SupportsLengthHint(Protocol):
-
-    def __length_hint__(self) -> int:
-        ...
-
-
 class SortedList(SortedMutableSequence[T], Generic[T]):
-    _data: list[list[T]]
+    _data: Final[list[list[T]]]
     _fenwick: Optional[list[int]]
     _len: int
-    _mins: list[T]
+    _mins: Final[list[T]]
 
     __slots__ = {
         "_data":
@@ -263,12 +249,12 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
         self = cls()
         self._len = len(data)
         self._fenwick = None
-        self._data = [data[i : i + CHUNKSIZE] for i in range(0, len(data), CHUNKSIZE)]
+        self._data = [data[i : i + CHUNKSIZE] for i in range(0, len(data), CHUNKSIZE)]  # type: ignore
         if len(self._data) > 1 and len(self._data[-1]) < CHUNKSIZE // 2:
             self._data[-2].extend(self._data.pop())
-            self._mins = data[:-CHUNKSIZE:CHUNKSIZE]
+            self._mins = data[:-CHUNKSIZE:CHUNKSIZE]  # type: ignore
         else:
-            self._mins = data[::CHUNKSIZE]
+            self._mins = data[::CHUNKSIZE]  # type: ignore
         return self
 
     @overload
@@ -787,7 +773,12 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
             raise TypeError(f"extend expected an iterable, got {iterable!r}")
         elif iterable is self:
             self *= 2
-        elif isinstance(iterable, (Sized, SupportsLengthHint)) and length_hint(iterable) < self._len // 8:
+        elif (
+            hasattr(type(iterable), "__len__")
+            and len(iterable) <= self._len // 8
+            or hasattr(type(iterable), "__length_hint__")
+            and length_hint(iterable) <= self._len // 8
+        ):
             for x in iterable:
                 self.append(x)
         elif isinstance(iterable, SortedCollection):
@@ -806,7 +797,7 @@ class SortedList(SortedMutableSequence[T], Generic[T]):
                 data[-2].extend(data.pop())
                 del mins[-1]
         else:
-            if not isinstance(iterable, (Sized, SupportsLengthHint)):
+            if not (hasattr(type(iterable), "__len__") or hasattr(type(iterable), "__length_hint__")):
                 iterable = iter(iterable)
                 for i, x in enumerate(iterable):
                     self.append(x)

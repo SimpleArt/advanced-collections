@@ -1,26 +1,20 @@
-from __future__ import annotations
-import sys
-from typing import Generic, TypeVar, Union
+from typing import Final, Generic, TypeVar, Union
 
-if sys.version_info < (3, 9):
-    from typing import Tuple as tuple
-
-import advanced_collections
+import advanced_collections.sorted._src as src
 from advanced_collections._src.comparable import SupportsRichHashableComparison
 from .sequence_between import SortedSequenceBetween
 
-__all__ = ["SortedMutableSequenceBetween"]
-
-Self = TypeVar("Self", bound="SortedMutableSequenceBetween")
 T_co = TypeVar("T_co", bound=SupportsRichHashableComparison, covariant=True)
 
+Self = TypeVar("Self", bound="SortedMutableSequenceBetweenProxy")
 
-class SortedMutableSequenceBetween(SortedSequenceBetween[T_co], Generic[T_co]):
-    _sequence: advanced_collections.sorted.SortedMutableSequence[T_co]
+
+class SortedMutableSequenceBetweenProxy(SortedSequenceBetween[T_co], Generic[T_co]):
+    _sequence: Final["src.mutable_sequence.SortedMutableSequence[T_co]"]
 
     __slots__ = ()
 
-    def __init__(self: Self, sequence: advanced_collections.sorted.SortedMutableSequence[T_co], /) -> None:
+    def __init__(self: Self, sequence: "src.mutable_sequence.SortedMutableSequence[T_co]", /) -> None:
         self._sequence = sequence
 
     def __delitem__(self: Self, index: Union[slice, tuple[slice, slice]], /) -> None:

@@ -1,16 +1,15 @@
 from __future__ import annotations
-from typing import Generic, Optional, TypeVar, overload
+from typing import Final, Generic, Optional, TypeVar, overload
 
 from .viewable_sequence import ViewableSequence
 
-__all__ = ["SequenceIslice"]
+T_co = TypeVar("T_co", covariant=True)
 
 Self = TypeVar("Self", bound="SequenceIslice")
-T_co = TypeVar("T_co", covariant=True)
 
 
 class SequenceIslice(ViewableSequence[T_co], Generic[T_co]):
-    _sequence: ViewableSequence[T_co]
+    _sequence: Final[ViewableSequence[T_co]]
     _start: Optional[int]
     _stop: Optional[int]
     _step: Optional[int]

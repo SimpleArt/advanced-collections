@@ -1,16 +1,17 @@
+from collections.abc import Iterable, Iterator
 from itertools import islice
-from typing import Generic, Literal, Optional, Type, TypeVar, overload
+from typing import Any, Generic, Literal, Optional, Type, TypeVar, overload
 
 from advanced_collections._src.comparable import SupportsRichHashableComparison
-from .list import SortedList
+
+import advanced_collections.sorted._src as src
 from .sequence import SortedSequence
 from .sequence_islice import SortedSequenceIslice
 
-__all__ = ["SortedSequenceBetween"]
-
-Self = TypeVar("Self", bound="SortedSequenceBetween")
 T = TypeVar("T", bound=SupportsRichHashableComparison)
 T_co = TypeVar("T_co", bound=SupportsRichHashableComparison)
+
+Self = TypeVar("Self", bound="SortedSequenceBetween")
 
 
 class SortedSequenceBetween(SortedSequence[T_co], Generic[T_co]):
@@ -72,12 +73,12 @@ class SortedSequenceBetween(SortedSequence[T_co], Generic[T_co]):
         return self._sequence.__between_reversed__(start, stop, inclusive, exclusive)
 
     @classmethod
-    def __from_iterable__(cls: Type[Self], iterable: Iterable[T], /) -> SortedList[T]:
-        return SortedList(iterable)
+    def __from_iterable__(cls: Type[Self], iterable: Iterable[T], /) -> "src.list.SortedList[T]":
+        return src.list.SortedList(iterable)
 
     @classmethod
-    def __from_sorted__(cls: Type[Self], iterable: Iterable[T], /) -> SortedList[T]:
-        return SortedList.__from_sorted__(iterable)
+    def __from_sorted__(cls: Type[Self], iterable: Iterable[T], /) -> "src.list.SortedList[T]":
+        return src.list.SortedList.__from_sorted__(iterable)
 
     @overload
     def __getitem__(self: Self, index: int, /) -> T_co: ...
@@ -97,7 +98,25 @@ class SortedSequenceBetween(SortedSequence[T_co], Generic[T_co]):
             stop = len(self._sequence)
         else:
             stop = self._sequence.index(self._stop, mode=self._stop_mode)
-        return self._sequence[range(start, stop)[index]]
+        range_ = range(start, stop)[index]
+        start_ = range_.start
+        stop_ = range_.stop
+        step_ = range_.step
+        if step_ > 0:
+            if start_ == 0:
+                start_ = None
+            if stop_ >= len(self._sequence):
+                stop_ = None
+            elif stop_ > stop:
+                stop_ = stop
+        else:
+            if start_ + 1 == len(self._sequence):
+                start_ = None
+            if stop_ < 0:
+                stop_ = None
+            elif stop_ + 1 < start:
+                stop_ = start - 1
+        return self._sequence[start_:stop_:step_]
 
     def __islice__(self: Self, start: Optional[int], stop: Optional[int], step: Optional[int], /) -> Iterator[T_co]:
         if self._start is None:
@@ -109,11 +128,24 @@ class SortedSequenceBetween(SortedSequence[T_co], Generic[T_co]):
         else:
             _stop = self._sequence.index(self._stop, mode=self._stop_mode)
         range_ = range(_start, _stop)[start:stop:step]
-        if start is not None:
-            start = range_.start
-        if stop is not None:
-            stop = range_.stop
-        return self._sequence.__islice__(start, stop, step)
+        start_ = range_.start
+        stop_ = range_.stop
+        step_ = range_.step
+        if step_ > 0:
+            if start_ == 0:
+                start_ = None
+            if stop_ >= len(self._sequence):
+                stop_ = None
+            elif stop_ > stop:
+                stop_ = stop
+        else:
+            if start_ + 1 == len(self._sequence):
+                start_ = None
+            if stop_ < 0:
+                stop_ = None
+            elif stop_ + 1 < start:
+                stop_ = start - 1
+        return self._sequence.__islice__(start_, stop_, step_)
 
     def __iter__(self: Self, /) -> Iterator[T_co]:
         """Iteratates through the slice in order."""
@@ -121,6 +153,8 @@ class SortedSequenceBetween(SortedSequence[T_co], Generic[T_co]):
 
     def __len__(self: Self, /) -> int:
         """Returns the number of elements in the slice."""
+        if self._start is not None is not self._stop < self._start:
+            return 0
         if self._start is None:
             start = 0
         else:

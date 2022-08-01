@@ -1,19 +1,13 @@
-import sys
 from abc import ABC, abstractmethod
+from collections.abc import MutableSequence
 from typing import Generic, TypeVar, overload
-
-if sys.version_info < (3, 9):
-    from typing import MutableSequence
-else:
-    from collections.abc import MutableSequence
 
 from .mutable_sequence_islice_proxy import MutableSequenceIsliceProxy
 from .viewable_sequence import ViewableSequence
 
-__all__ = ["ViewableMutableSequence"]
+T = TypeVar("T")
 
 Self = TypeVar("Self", bound="ViewableMutableSequence")
-T = TypeVar("T")
 
 
 class ViewableMutableSequence(ViewableSequence[T], MutableSequence[T], ABC, Generic[T]):

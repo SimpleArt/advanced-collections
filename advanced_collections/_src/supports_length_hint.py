@@ -1,7 +1,4 @@
-from __future__ import annotations
 from typing import Protocol, TypeVar, runtime_checkable
-
-__all__ = ["SupportsLengthHint"]
 
 Self = TypeVar("Self", bound="SupportsLengthHint")
 

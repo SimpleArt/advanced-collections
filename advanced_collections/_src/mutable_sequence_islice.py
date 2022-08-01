@@ -1,16 +1,15 @@
-from typing import Generic, Optional, TypeVar, Union
+from typing import Final, Generic, Optional, TypeVar, Union
 
 from .viewable_mutable_sequence import ViewableMutableSequence
 from .sequence_islice import SequenceIslice
 
-__all__ = ["MutableSequenceIslice"]
+T = TypeVar("T")
 
 Self = TypeVar("Self", bound="MutableSequenceIslice")
-T = TypeVar("T")
 
 
 class MutableSequenceIslice(SequenceIslice[T], Generic[T]):
-    _sequence: ViewableMutableSequence[T]
+    _sequence: Final[ViewableMutableSequence[T]]
 
     __slots__ = ()
 
@@ -23,10 +22,7 @@ class MutableSequenceIslice(SequenceIslice[T], Generic[T]):
         /,
     ) -> None:
         assert isinstance(sequence, ViewableMutableSequence)
-        self._sequence = sequence
-        self._start = start
-        self._stop = stop
-        self._step = step
+        super().__init__(sequence, start, stop, step)
 
     def __delitem__(self: Self, index: Union[int, slice], /) -> None:
         if isinstance(index, slice):
