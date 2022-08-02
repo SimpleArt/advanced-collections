@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "advanced-collections"
+dynamic = ["description", "version"]
+
+classifiers = [
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Database"
+]
+
+keywords = ["data structures", "databases", "queues"]
+
+license = {text = "mit"}
+readme = "README.md"
+
+requires-python = ">=3.10"
+
+[project.urls]
+repository = "https://github.com/SimpleArt/advanced-collections"
+
+[tool.setuptools.dynamic]
+version = {attr = "advanced_collections.__version__"}
